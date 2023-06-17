@@ -15,7 +15,7 @@ class Piece:
         return self.pos
     
     def get_img(self):
-        img = py.image.load(os.path.join('assets', f'{self.name}_{self.color}45.png'))
+        img = py.image.load(os.path.join('Assets', f'{self.name}_{self.color}45.png'))
         transformed_img = py.transform.smoothscale(img, (HEIGHT//ROWS, WIDTH//COLS))
         return transformed_img
 
