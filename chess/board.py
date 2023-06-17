@@ -2,7 +2,6 @@ import pygame as py
 import numpy as np
 from .constants import *
 from .pieces import *
-#from functions import *
 
 
 class Board:
@@ -22,7 +21,6 @@ class Board:
 
         # Add pawns to array
         for j in range(COLS):
-            # when indexing array, [j, i] since each list is a row, we first index which row then which col.
             self.array[pawn_row][j]= Pawn(pawn_row, j, color)
 
         # Add pieces to array
