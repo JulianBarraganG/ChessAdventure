@@ -2,7 +2,7 @@ import pygame
 
 #### CANVAS CONSTANTS ####
 WIDTH, HEIGHT = 800, 800 #The size of the canvas
-FPS = 60
+FPS = 15
 ROWS, COLS = 8, 8
 SQ_SIZE = WIDTH // COLS # 800 // 8 = 100. The square size of a square in pixels.
 
@@ -16,3 +16,5 @@ TURQUOISE = (104, 189, 188, 10) #RGB code: #68BDBC Cyan
 DSQ = LBROWN
 LSQ = WHITE
 
+##### STARTING FEN POS #####
+START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"

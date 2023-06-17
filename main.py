@@ -1,32 +1,17 @@
 import pygame as py
-#import os
-from chess.board import board
-#from svglib.svglib import svg2rlg # import svg2rlg function from svglib
-#from reportlab.graphics import renderPM # import renderPM function from reportlab.graphics
+from chess.board import Board
 from chess.constants import *
-from chess.images import *
 from chess.pieces import *
+from chess.game import Game
 
-WIN = py.display.set_mode((WIDTH, HEIGHT))
-BOARD = board(WIN)
-
-a = Pawn()
-
-print(a.calc_pos())
-
+SCREEN = py.display.set_mode((WIDTH, HEIGHT))
+game = Game()
 py.display.set_caption("Chess")
 
 def draw_window():
-   WIN.fill(WHITE)
-   board(WIN)
-#    for i in range(ROWS): 
-#     for j in range(COLS):
-#         if j == 6:
-#             WIN.blit(W_PAWN, (i*SQ_SIZE, j*SQ_SIZE))
-#         elif j == 1:
-#             WIN.blit(B_PAWN, (i*SQ_SIZE, j*SQ_SIZE))
    py.display.update()
-
+   game._bg(SCREEN)
+   game.show_pieces(SCREEN)
 
 def main():
    clock = py.time.Clock()
