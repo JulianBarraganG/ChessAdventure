@@ -9,6 +9,7 @@ class Piece:
         self.color = color
         self.name = name
         self.value = value
+        self.img = self.get_img()
 
     def calc_pos(self):
         self.pos = (self.x, self.y)

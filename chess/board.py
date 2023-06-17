@@ -10,36 +10,46 @@ class Board:
     Contains array of board as well as methods to modify said array,
     before projecting to images via the Game class.
     """
-    
-    def __init__(self):
-        self.array = np.array([[None]*8]*8)
-        self._reset_board('w')
-        self._reset_board('b')
 
-    def _reset_board(self, color):
+    def __init__(self):
+        self.array = [[None]*8 for _ in range(ROWS)]
+
+    def _start_pos(self, color):
+        """
+        Adds either black or white pieces to initial positions.
+        """
         pawn_row, piece_row = (6, 7) if color == 'w' else (1, 0)
 
         # Add pawns to array
         for j in range(COLS):
-            # when indexing array, [j, i] since each list is a row, we first index which list then which col.
-            self.array[j, pawn_row] = Pawn(pawn_row, j, color)
+            # when indexing array, [j, i] since each list is a row, we first index which row then which col.
+            self.array[pawn_row][j]= Pawn(pawn_row, j, color)
 
         # Add pieces to array
-        self.array[0, piece_row] = Rook(piece_row, 0, color)
-        self.array[7, piece_row] = Rook(piece_row, 7, color)
+        self.array[piece_row][0] = Rook(piece_row, 0, color)
+        self.array[piece_row][7] = self.array[piece_row][0]
 
-        self.array[1, piece_row] = Knight(piece_row, 1, color)
-        self.array[6, piece_row] = Knight(piece_row, 6, color)
+        self.array[piece_row][1] = Knight(piece_row, 1, color)
+        self.array[piece_row][6] = Knight(piece_row, 6, color)
 
-        self.array[2, piece_row] = Bishop(piece_row, 2, color)
-        self.array[5, piece_row] = Bishop(piece_row, 5, color)
+        self.array[piece_row][2] = Bishop(piece_row, 2, color)
+        self.array[piece_row][5] = Bishop(piece_row, 5, color)
 
-        self.array[3, piece_row] = Queen(piece_row, 3, color)
+        self.array[piece_row][3] = Queen(piece_row, 3, color)
 
-        self.array[4, piece_row] = King(piece_row, 4, color)
+        self.array[piece_row][4] = King(piece_row, 4, color)
+
+    def reset_board(self):
+        self.array = [[None]*8 for _ in range(ROWS)] # clears the board.
+        self._start_pos('w')
+        self._start_pos('b')
 
     def fen_reader(self, fen):
-        self.array = np.array([[None]*8]*8) # reset array
+        """
+        Takes a fen string and converts the position into array form.
+        Modifies the array of the board class.
+        """
+        self.array = [[None]*8 for _ in range(ROWS)] # clears the board.
         row = 0
         col = 0
         for char in fen:
