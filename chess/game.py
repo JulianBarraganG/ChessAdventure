@@ -56,12 +56,13 @@ class Game:
                         self.get_pawn_moves(i, j, moves)
                     elif piece == 'knight':
                         self.get_knight_moves(i, j, moves)
+
+        print(len(moves))
         return moves
 
     def get_pawn_moves(self, i, j, moves):
         """
-        Takes (i, j) coordinates, a list of moves and appends all possible moves to the list.
-        Returns: moves with added possible moves.
+        Calculates all possible pawn moves, and adds them to the moves list
         """
         board = self.board.array
         if self.white_to_move: # whites turn
@@ -71,10 +72,10 @@ class Game:
                 if not board[i-2][j] and i == 6:
                     moves.append(Move((i, j), (i-2, j), board))
             # captures
-            if j > 0:
+            if j > (COLS - COLS):
                 if board[i-1][j-1] and board[i-1][j-1].color == 'b':
                     moves.append(Move((i, j), (i-1, j-1), board))
-            if j < 7:
+            if j < (COLS-1):
                 if board[i-1][j+1] and board[i-1][j+1].color == 'b':
                     moves.append(Move((i, j), (i-1, j+1), board))
         else: # blacks turn
@@ -84,17 +85,42 @@ class Game:
                 if not board[i+2][j] and i == 1:
                     moves.append(Move((i, j), (i+2, j), board))
             # captures
-            if j > 0:
+            if j > (COLS - COLS):
                 if board[i+1][j-1] and board[i+1][j-1].color == 'w':
                     moves.append(Move((i, j), (i+1, j-1), board))
-            if j < 7:
+            if j < (COLS-1):
                 if board[i+1][j+1] and board[i+1][j+1].color == 'w':
                     moves.append(Move((i, j), (i+1, j+1), board))
         
     def get_knight_moves(self, i, j, moves):
-        return moves
+        """
+        Calculates all possible knight moves, and adds them to the moves list
+        """
+        board = self.board.array
+        move_pattern = [
+            (i-1, j-2),
+            (i-1, j+2),
+            (i+1, j-2),
+            (i+1, j+2),
+            (i-2, j-1),
+            (i-2, j+1),
+            (i+2, j-1),
+            (i+2, j+1)
+        ]
 
+        possible_moves = []
 
+        if self.white_to_move: # whites turn
+            possible_moves = list(filter(lambda move: move[0] >= 0 and move[0] <= (ROWS-1) and move[1] >= 0 and move[1] <= (COLS-1), move_pattern))
+            for tpl in possible_moves:
+                if not board[tpl[0]][tpl[1]] or not board[tpl[0]][tpl[1]].color == 'w':
+                    moves.append(Move((i, j), (tpl[0], tpl[1]), board))
+
+        if not self.white_to_move: # blacks turn
+            possible_moves = list(filter(lambda move: move[0] >= 0 and move[0] <= (ROWS-1) and move[1] >= 0 and move[1] <= (COLS-1), move_pattern))
+            for tpl in possible_moves:
+                if not board[tpl[0]][tpl[1]] or not board[tpl[0]][tpl[1]].color == 'b':
+                    moves.append(Move((i, j), (tpl[0], tpl[1]), board))
 
 
 class Move():
