@@ -36,25 +36,26 @@ class Game:
         self.board.array[move.f_row][move.f_col] = move.moved_piece
         self.move_log.append(move) 
         self.white_to_move = not self.white_to_move # Swap turns
-        print(move.moveID)
+        print(move.get_chess_notation())
 
     # Checks for all valid moves considering checks. check-mate, en-passant and pawn-promotion handled elsewhere.
     def get_valid_moves(self):
         return self.get_all_moves() # for now we don't care about checks
     
     def get_all_moves(self):
-        moves = [Move((6, 4), (4, 4), self.board.array)]
+        moves = []
         for i in range(ROWS):
             for j in range(COLS):
                 if self.board.array[i][j]:
                     turn = self.board.array[i][j].color
                 else: 
                     continue
-                if (turn == 'w' and self.white_to_move) or turn == 'b' and not self.white_to_move:
+                if (turn == 'w' and self.white_to_move) or (turn == 'b' and not self.white_to_move):
                     piece = self.board.array[i][j].name
                     if piece == 'pawn':
                         self.get_pawn_moves(i, j, moves)
-                        
+                    elif piece == 'knight':
+                        self.get_knight_moves(i, j, moves)
         return moves
 
     def get_pawn_moves(self, i, j, moves):
@@ -62,9 +63,42 @@ class Game:
         Takes (i, j) coordinates, a list of moves and appends all possible moves to the list.
         Returns: moves with added possible moves.
         """
-        pass
+        board = self.board.array
+        if self.white_to_move: # whites turn
+            # move 1 forward, or 2 if first move.
+            if not board[i-1][j]:
+                moves.append(Move((i, j), (i-1, j), board))
+                if not board[i-2][j] and i == 6:
+                    moves.append(Move((i, j), (i-2, j), board))
+            # captures
+            if j > 0:
+                if board[i-1][j-1] and board[i-1][j-1].color == 'b':
+                    moves.append(Move((i, j), (i-1, j-1), board))
+            if j < 7:
+                if board[i-1][j+1] and board[i-1][j+1].color == 'b':
+                    moves.append(Move((i, j), (i-1, j+1), board))
+        else: # blacks turn
+            # move 1 forward, or 2 if first move.
+            if not board[i+1][j]:
+                moves.append(Move((i, j), (i+1, j), board))
+                if not board[i+2][j] and i == 1:
+                    moves.append(Move((i, j), (i+2, j), board))
+            # captures
+            if j > 0:
+                if board[i+1][j-1] and board[i+1][j-1].color == 'w':
+                    moves.append(Move((i, j), (i+1, j-1), board))
+            if j < 7:
+                if board[i+1][j+1] and board[i+1][j+1].color == 'w':
+                    moves.append(Move((i, j), (i+1, j+1), board))
+        
+    def get_knight_moves(self, i, j, moves):
+        return moves
+
+
+
 
 class Move():
+
     row_to_rank = {0: '8', 1: '7', 2: '6', 3: '5', 4: '4', 5: '3', 6: '2', 7: '1'}
     col_to_file = {0: 'a', 1: 'b', 2: 'c', 3: 'd', 4: 'e', 5: 'f', 6: 'g', 7: 'h'}
 
@@ -83,9 +117,11 @@ class Move():
         if isinstance(other, Move):
             return True if self.moveID == other.moveID else False
 
+    # chess-notation helper
     def get_rank_file(self):
         return self.col_to_file[self.f_col] + self.row_to_rank[self.f_row]
     
+    # implement fully later.
     def get_chess_notation(self):
         if self.moved_piece.name == "pawn" and not self.captured_piece:
             return self.get_rank_file()
