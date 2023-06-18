@@ -21,6 +21,8 @@ def main():
    game = Game()
    sq_selected = () # tuple of coordinates for selected square.
    player_clicked = [] # list of 
+   moves : list = game.get_valid_moves()
+   move_made = False
 
    while run:
       for event in py.event.get():
@@ -28,7 +30,7 @@ def main():
                run = False
             elif event.type == py.MOUSEBUTTONDOWN:
                pos = py.mouse.get_pos()
-               row, col = pos[1]//SQ_SIZE, pos[0]//SQ_SIZE # (i,j) of clicked square.
+               row, col = pos[1]//SQ_SIZE, pos[0]//SQ_SIZE # (i, j) of clicked square.
                if sq_selected == (row, col): 
                   sq_selected = () # deselect
                   player_clicked = [] # clear click-queue
@@ -37,10 +39,15 @@ def main():
                   player_clicked.append(sq_selected)
                   if len(player_clicked) == 2:
                      move = Move(player_clicked[0], player_clicked[1], game.board.array)
-                     if game.board.array[move.i_row][move.i_col]:
+                     if move in moves:
                         game.make_move(move)
+                        move_made = True
                      player_clicked = []
                      sq_selected = ()
+
+            if move_made:
+                moves = game.get_valid_moves()
+                move_made = False
                      
       clock.tick(FPS) #sets tickrate to 60
       py.display.update()

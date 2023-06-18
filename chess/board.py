@@ -11,7 +11,7 @@ class Board:
     """
 
     def __init__(self):
-        self.array = [[None]*8 for _ in range(ROWS)]
+        self.array = [[None]*COLS for _ in range(ROWS)]
 
     def _start_pos(self, color):
         """
@@ -38,7 +38,7 @@ class Board:
         self.array[piece_row][4] = King(piece_row, 4, color)
 
     def reset_board(self):
-        self.array = [[None]*8 for _ in range(ROWS)] # clears the board.
+        self.array = [[None]*COLS for _ in range(ROWS)] # clears the board.
         self._start_pos('w')
         self._start_pos('b')
 
@@ -47,7 +47,7 @@ class Board:
         Takes a fen string and converts the position into array form.
         Modifies the array of the board class.
         """
-        self.array = [[None]*8 for _ in range(ROWS)] # clears the board.
+        self.array = [[None]*COLS for _ in range(ROWS)] # clears the board.
         row = 0
         col = 0
         for char in fen:
