@@ -25,7 +25,7 @@ class Board:
 
         # Add pieces to array
         self.array[piece_row][0] = Rook(piece_row, 0, color)
-        self.array[piece_row][7] = self.array[piece_row][0]
+        self.array[piece_row][7] = Rook(piece_row, 7, color)
 
         self.array[piece_row][1] = Knight(piece_row, 1, color)
         self.array[piece_row][6] = Knight(piece_row, 6, color)

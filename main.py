@@ -6,9 +6,14 @@ from chess.game import Game, Move
 
 
 
-def draw_gamestate(game, screen):
+def draw_gamestate(game, screen, sq_selected):
       game.show_bg(screen)
       game.show_pieces(screen)
+
+      if sq_selected:
+        row, col = sq_selected
+        highlight_rect = py.Rect(col * SQ_SIZE, row * SQ_SIZE, SQ_SIZE, SQ_SIZE)
+        py.draw.rect(screen, py.Color('yellow'), highlight_rect, 4)
                      
 
 def main():
@@ -51,7 +56,7 @@ def main():
                      
       clock.tick(FPS) #sets tickrate to 60
       py.display.update()
-      draw_gamestate(game, screen)
+      draw_gamestate(game, screen, sq_selected)
 
 
    py.quit()

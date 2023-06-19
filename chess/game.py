@@ -15,6 +15,8 @@ class Game:
         self.board.reset_board()
         self.move_log = []
         self.white_to_move = True
+        self.get_move_functions = {'pawn' : self.get_pawn_moves, 'rook' : self.get_rook_moves, 'knight' : self.get_knight_moves, 
+                                   'queen': self.get_queen_moves, 'king': self.get_king_moves, 'bishop': self.get_bishop_moves}
 
     # Draw the squares in background
     def show_bg(self, screen):
@@ -36,7 +38,7 @@ class Game:
         self.board.array[move.f_row][move.f_col] = move.moved_piece
         self.move_log.append(move) 
         self.white_to_move = not self.white_to_move # Swap turns
-        print(move.get_chess_notation())
+        #print(move.get_chess_notation())
 
     # Checks for all valid moves considering checks. check-mate, en-passant and pawn-promotion handled elsewhere.
     def get_valid_moves(self):
@@ -52,12 +54,8 @@ class Game:
                     continue
                 if (turn == 'w' and self.white_to_move) or (turn == 'b' and not self.white_to_move):
                     piece = self.board.array[i][j].name
-                    if piece == 'pawn':
-                        self.get_pawn_moves(i, j, moves)
-                    elif piece == 'knight':
-                        self.get_knight_moves(i, j, moves)
+                    self.get_move_functions[piece](i, j, moves)
 
-        print(len(moves))
         return moves
 
     def get_pawn_moves(self, i, j, moves):
@@ -72,7 +70,7 @@ class Game:
                 if not board[i-2][j] and i == 6:
                     moves.append(Move((i, j), (i-2, j), board))
             # captures
-            if j > (COLS - COLS):
+            if j > 0:
                 if board[i-1][j-1] and board[i-1][j-1].color == 'b':
                     moves.append(Move((i, j), (i-1, j-1), board))
             if j < (COLS-1):
@@ -85,7 +83,7 @@ class Game:
                 if not board[i+2][j] and i == 1:
                     moves.append(Move((i, j), (i+2, j), board))
             # captures
-            if j > (COLS - COLS):
+            if j > 0:
                 if board[i+1][j-1] and board[i+1][j-1].color == 'w':
                     moves.append(Move((i, j), (i+1, j-1), board))
             if j < (COLS-1):
@@ -121,6 +119,127 @@ class Game:
             for tpl in possible_moves:
                 if not board[tpl[0]][tpl[1]] or not board[tpl[0]][tpl[1]].color == 'b':
                     moves.append(Move((i, j), (tpl[0], tpl[1]), board))
+
+    def get_rook_moves(self, i, j, moves):
+        """
+        Calculates all possible rook moves, and adds them to the moves list
+        """
+        board = self.board.array
+
+        def add_move(start, end, color):
+            """
+            Helper function extracting logic for simplicity.
+            """
+            if board[end[0]][end[1]] and board[end[0]][end[1]].color == color:
+                return False
+            moves.append(Move(start, end, board))
+            if board[end[0]][end[1]] and board[end[0]][end[1]].color == ('b' if color == 'w' else 'w'):
+                return False
+            return True
+
+        if self.white_to_move:
+            col = 'w' # white rook moves
+            u = i - 1
+            while u >= 0 and add_move((i, j), (u, j), col): # up
+                u -= 1
+            d = i + 1
+            while d < ROWS and add_move((i, j), (d, j), col): # down
+                d += 1
+            l = j - 1
+            while l >= 0 and add_move((i, j), (i, l), col): # left
+                l -=1
+            r = j + 1
+            while r < COLS and add_move((i, j), (i, r), col): # right
+                r += 1
+
+        else:
+            col = 'b' # black rook moves
+            u = i - 1
+            while u >= 0 and add_move((i, j), (u, j), col): # up
+                u -= 1
+            d = i + 1
+            while d < ROWS and add_move((i, j), (d, j), col): # down
+                d += 1
+            l = j - 1
+            while l >= 0 and add_move((i, j), (i, l), col): # left
+                l -=1
+            r = j + 1
+            while r < COLS and add_move((i, j), (i, r), col): # right
+                r += 1
+
+    def get_bishop_moves(self, i, j, moves):
+        """
+        Calculates all possible rook moves, and adds them to the moves list
+        """
+        board = self.board.array
+
+        def add_move(start, end, color):
+            """
+            Helper function extracting logic for simplicity.
+            """
+            if board[end[0]][end[1]] and board[end[0]][end[1]].color == color:
+                return False
+            moves.append(Move(start, end, board))
+            if board[end[0]][end[1]] and board[end[0]][end[1]].color == ('b' if color == 'w' else 'w'):
+                return False
+            return True
+        
+        if self.white_to_move:
+            col = 'w' # white bishop moves
+            u = i - 1
+            l = j - 1
+            while (u >= 0 and l >= 0) and add_move((i,j), (u, l), col): # up and left
+                u -= 1
+                l -= 1
+
+            u = i - 1
+            r = j + 1
+            while (u >= 0 and r < COLS) and add_move((i, j), (u, r), col): # up and right
+                u -= 1
+                r += 1
+
+            d = i + 1
+            l = j - 1
+            while (d < ROWS and l >=0) and add_move((i, j), (d, l), col): # down and left
+                d += 1
+                l -= 1
+                
+            d = i + 1
+            r = j + 1
+            while (d < ROWS and r < COLS) and add_move((i, j), (d, r), col): # down and right
+                d += 1
+                r += 1
+        else:
+            col = 'b' # black bishop moves
+            u = i - 1
+            l = j - 1
+            while (u >= 0 and l >= 0) and add_move((i,j), (u, l), col): # up and left
+                u -= 1
+                l -= 1
+
+            u = i - 1
+            r = j + 1
+            while (u >= 0 and r < COLS) and add_move((i, j), (u, r), col): # up and right
+                u -= 1
+                r += 1
+
+            d = i + 1
+            l = j - 1
+            while (d < ROWS and l >=0) and add_move((i, j), (d, l), col): # down and left
+                d += 1
+                l -= 1
+    
+            d = i + 1
+            r = j + 1
+            while (d < ROWS and r < COLS) and add_move((i, j), (d, r), col): # down and right
+                d += 1
+                r += 1
+
+    def get_king_moves(self, i, j, moves):
+        pass
+
+    def get_queen_moves(self, i, j, moves):
+        pass
 
 
 class Move():
