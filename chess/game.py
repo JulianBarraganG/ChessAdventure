@@ -109,13 +109,13 @@ class Game:
         possible_moves = []
 
         if self.white_to_move: # whites turn
-            possible_moves = list(filter(lambda move: move[0] >= 0 and move[0] <= (ROWS-1) and move[1] >= 0 and move[1] <= (COLS-1), move_pattern))
+            possible_moves = list(filter(lambda move: move[0] >= 0 and move[0] < (ROWS) and move[1] >= 0 and move[1] < (COLS), move_pattern))
             for tpl in possible_moves:
                 if not board[tpl[0]][tpl[1]] or not board[tpl[0]][tpl[1]].color == 'w':
                     moves.append(Move((i, j), (tpl[0], tpl[1]), board))
 
         if not self.white_to_move: # blacks turn
-            possible_moves = list(filter(lambda move: move[0] >= 0 and move[0] <= (ROWS-1) and move[1] >= 0 and move[1] <= (COLS-1), move_pattern))
+            possible_moves = list(filter(lambda move: move[0] >= 0 and move[0] < (ROWS) and move[1] >= 0 and move[1] < (COLS), move_pattern))
             for tpl in possible_moves:
                 if not board[tpl[0]][tpl[1]] or not board[tpl[0]][tpl[1]].color == 'b':
                     moves.append(Move((i, j), (tpl[0], tpl[1]), board))
@@ -236,10 +236,40 @@ class Game:
                 r += 1
 
     def get_king_moves(self, i, j, moves):
-        pass
+
+        board = self.board.array
+        move_pattern = [
+            (i-1, j+1), #up right
+            (i-1, j-1), #up left
+            (i-1, j), #up
+            (i, j+1), #right
+            (i, j-1), #left
+            (i+1, j+1), #down right
+            (i+1, j-1), #down left
+            (i+1, j), # down
+        ]
+
+        possible_moves = []
+
+
+        if self.white_to_move: # whites turn
+            possible_moves = list(filter(lambda move: move[0] >= 0 and move[0] < (ROWS) and move[1] >= 0 and move[1] < (COLS), move_pattern))
+            for tpl in possible_moves:
+                if not board[tpl[0]][tpl[1]] or not board[tpl[0]][tpl[1]].color == 'w':
+                    moves.append(Move((i, j), (tpl[0], tpl[1]), board))
+
+        if not self.white_to_move: # blacks turn
+            possible_moves = list(filter(lambda move: move[0] >= 0 and move[0] < (ROWS) and move[1] >= 0 and move[1] < (COLS), move_pattern))
+            for tpl in possible_moves:
+                if not board[tpl[0]][tpl[1]] or not board[tpl[0]][tpl[1]].color == 'b':
+                    moves.append(Move((i, j), (tpl[0], tpl[1]), board))
 
     def get_queen_moves(self, i, j, moves):
-        pass
+        """
+        Calc queen moves.
+        """
+        self.get_bishop_moves(i, j, moves)
+        self.get_rook_moves(i, j, moves)
 
 
 class Move():

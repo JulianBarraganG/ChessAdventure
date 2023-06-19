@@ -13,7 +13,7 @@ def draw_gamestate(game, screen, sq_selected):
       if sq_selected:
         row, col = sq_selected
         highlight_rect = py.Rect(col * SQ_SIZE, row * SQ_SIZE, SQ_SIZE, SQ_SIZE)
-        py.draw.rect(screen, py.Color('yellow'), highlight_rect, 4)
+        py.draw.rect(screen, py.Color('Yellow'), highlight_rect, 4)
                      
 
 def main():
@@ -47,8 +47,10 @@ def main():
                      if move in moves:
                         game.make_move(move)
                         move_made = True
-                     player_clicked = []
-                     sq_selected = ()
+                        player_clicked = []
+                        sq_selected = ()
+                     else:
+                        player_clicked = [sq_selected] # invalid moves, move your click to the invalid square
 
             if move_made:
                 moves = game.get_valid_moves()
