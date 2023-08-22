@@ -26,13 +26,15 @@ def main():
    game = Game()
    sq_selected = () # tuple of coordinates for selected square.
    player_clicked = [] # list of 
-   moves : list = game.get_valid_moves()
+   moves = game.get_valid_moves()
    move_made = False
 
    while run:
       for event in py.event.get():
             if event.type == py.QUIT:
                run = False
+            
+            # mouse clicks
             elif event.type == py.MOUSEBUTTONDOWN:
                pos = py.mouse.get_pos()
                row, col = pos[1]//SQ_SIZE, pos[0]//SQ_SIZE # (i, j) of clicked square.
@@ -51,6 +53,14 @@ def main():
                         sq_selected = ()
                      else:
                         player_clicked = [sq_selected] # invalid moves, move your click to the invalid square
+               
+               # undo press
+            elif event.type == py.KEYDOWN:
+               if event.key == py.K_LEFT:
+                  game.undo_move()
+                  move_made = True
+
+
 
             if move_made:
                 moves = game.get_valid_moves()

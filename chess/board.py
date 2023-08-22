@@ -47,50 +47,30 @@ class Board:
         Takes a fen string and converts the position into array form.
         Modifies the array of the board class.
         """
-        self.array = [[None]*COLS for _ in range(ROWS)] # clears the board.
+        self.array = [[None] * COLS for _ in range(ROWS)]  # clears the board.
         row = 0
         col = 0
+    
+        piece_mapping = {
+            'p': Pawn,
+            'k': King,
+            'q': Queen,
+            'r': Rook,
+            'b': Bishop,
+            'n': Knight,
+        }
+    
         for char in fen:
             if char.isdigit():
                 col += int(char)
-            elif char == 'P':
-                self.array[col, row] = Pawn(row, col, 'w')
-                col += 1
-            elif char == 'p':
-                self.array[col, row] = Pawn(row, col, 'b')
-                col += 1
-            elif char == 'K':
-                self.array[col, row] = King(row, col, 'w')
-                col += 1
-            elif char == 'k':
-                self.array[col, row] = King(row, col, 'b')
-                col += 1
-            elif char == 'Q':
-                self.array[col, row] = Queen(row, col, 'w')
-                col += 1
-            elif char == 'q':
-                self.array[col, row] = Queen(row, col, 'b')
-                col += 1
-            elif char == 'R':
-                self.array[col, row] = Rook(row, col, 'w')
-                col += 1
-            elif char == 'r':
-                self.array[col, row] = Rook(row, col, 'b')
-                col += 1
-            elif char == 'B':
-                self.array[col, row] = Bishop(row, col, 'w')
-                col += 1
-            elif char == 'b':
-                self.array[col, row] = Bishop(row, col, 'b')
-                col += 1
-            elif char == 'N':
-                self.array[col, row] = Knight(row, col, 'w')
-                col += 1
-            elif char == 'n':
-                self.array[col, row] = Knight(row, col, 'b')
+            elif char.lower() in piece_mapping:
+                piece_class = piece_mapping[char.lower()]
+                color = 'w' if char.isupper() else 'b'
+                self.array[row][col] = piece_class(row, col, color)
                 col += 1
             elif char == '/':
                 row += 1
                 col = 0
-            elif char.isspace(): 
+            elif char.isspace():
                 break
+            

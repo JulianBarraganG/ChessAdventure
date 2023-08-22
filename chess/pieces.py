@@ -4,15 +4,17 @@ import os
 
 class Piece:
     def __init__(self, row, col, color : str, name : str, value : float):
-        self.x = col*SQ_SIZE
-        self.y = row*SQ_SIZE
+        self.x = row*SQ_SIZE
+        self.y = col*SQ_SIZE
         self.color = color
         self.name = name
         self.value = value
         self.img = self.get_img()
+        self.pos = self.calc_pos()
 
     def calc_pos(self):
-        self.pos = (self.x, self.y)
+        """Returns row and col of piece"""
+        self.pos = (self.x//SQ_SIZE, self.y//SQ_SIZE)
         return self.pos
     
     def get_img(self):

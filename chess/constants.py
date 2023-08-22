@@ -13,8 +13,19 @@ WHITE = (255, 250, 205, 10) # RGB code: #FFFACD Lemonchiffon
 TURQUOISE = (104, 189, 188, 10) #RGB code: #68BDBC Cyan
 
 #### SET COLORS HERE ####
-DSQ = TURQUOISE
+DSQ = LBROWN
 LSQ = WHITE
 
 ##### STARTING FEN POS #####
 START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
+
+##### BOARD DIRECTIONS ####
+ALL_DIR = ((-1, 0), # up
+           (1, 0), # down
+           (0, 1), # right
+           (0, -1), # left
+           (1, -1), # down left
+           (1, 1), # down right
+           (-1, -1), # up left
+           (-1, 1) # up right
+           )
