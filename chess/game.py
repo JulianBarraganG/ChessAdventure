@@ -280,22 +280,52 @@ class Game:
         """
         board = self.board.array
         enemy = 'b' if self.white_to_move else 'w'
-        dir = -1 if self.white_to_move else 1 # white move toward row 0 and vice versa.
+        dir = -1 if self.white_to_move else 1
         start_row = 6 if self.white_to_move else 1
-        end_row = 0 if self.white_to_move else 7 # FOR LATER USE OF PAWN PROMOTION
+        end_row = 0 if self.white_to_move else 7
+        pinned = False
+        pin_dir = None
+        orthogonal_dirs = ((1, 0), (0, 1), (-1, 0), (0, -1))
 
-        # move 1 forward, or 2 if first move.
-        if not board[i+dir][j]:
-            moves.append(Move((i, j), (i+dir, j), board))
-            if not board[i+2*dir][j] and i == start_row:
-                moves.append(Move((i, j), (i+2*dir, j), board))
-        # Diagonal captures
-        if j > 0:
-            if board[i+dir][j-1] and board[i+dir][j-1].color == enemy:
-                moves.append(Move((i, j), (i+dir, j-1), board))
-        if j < (COLS-1):
-            if board[i+dir][j+1] and board[i+dir][j+1].color == enemy:
-                moves.append(Move((i, j), (i+dir, j+1), board))
+        for pin in self.pins:
+            if (i, j) == (pin[0], pin[1]):
+                pinned = True
+                pin_dir = pin[2], pin[3]
+
+        # Extraction of logic
+        forward_empty = not board[i + dir][j]
+        two_squares_empty = not board[i + 2 * dir][j] and i == start_row # allow for double advance first pawn move.
+        left_capture_possible = j > 0 and board[i + dir][j - 1] and board[i + dir][j - 1].color == enemy
+        right_capture_possible = j < COLS - 1 and board[i + dir][j + 1] and board[i + dir][j + 1].color == enemy
+
+        if not pinned: # add normal legal moves/captures.
+            
+            # Add advancing moves
+            if forward_empty and (i + dir != end_row):
+                moves.append(Move((i, j), (i + dir, j), board))
+                if two_squares_empty:
+                    moves.append(Move((i, j), (i + 2 * dir, j), board))
+
+            # Add captures
+            if left_capture_possible:
+                moves.append(Move((i, j), (i + dir, j - 1), board))
+            if right_capture_possible:
+                moves.append(Move((i, j), (i + dir, j + 1), board))
+
+        elif 0 < j < (COLS - 1): # if pinned and capture stays within board (pinned == True implicit).
+
+            # Logic allowing the capture of pinning piece.
+            diagonal_capture_possible = board[i + pin_dir[0]][j + pin_dir[1]] and board[i + pin_dir[0]][j + pin_dir[1]].color == enemy
+
+            if diagonal_capture_possible: 
+                moves.append(Move((i, j), (i + pin_dir[0], j + pin_dir[1]), board))
+
+            # No captures available if orthogonally pinned, but advances are:
+            elif pin_dir in orthogonal_dirs and forward_empty: 
+                moves.append(Move((i, j), (i + dir, j), board))
+                if two_squares_empty:
+                    moves.append(Move((i, j), (i + 2 * dir, j), board))
+
 
         
     def get_knight_moves(self, i, j, moves):
@@ -303,6 +333,11 @@ class Game:
         Calculates all possible knight moves, and adds them to the moves list
         """
         board = self.board.array
+        pinned = False
+        for pin in self.pins:
+            if (i, j) == (pin[0], pin[1]):
+                pinned = True
+
         move_pattern = (
             (i-1, j-2),
             (i-1, j+2),
@@ -317,86 +352,62 @@ class Game:
         ally = 'w' if self.white_to_move else 'b'
 
         possible_moves = tuple(filter(lambda move: move[0] >= 0 and move[0] < (ROWS) and move[1] >= 0 and move[1] < (COLS), move_pattern))
-        for tpl in possible_moves:
-            if not board[tpl[0]][tpl[1]] or not board[tpl[0]][tpl[1]].color == ally:
-                moves.append(Move((i, j), (tpl[0], tpl[1]), board))
+
+        if not pinned:
+            for tpl in possible_moves:
+                if not board[tpl[0]][tpl[1]] or not board[tpl[0]][tpl[1]].color == ally:
+                    moves.append(Move((i, j), (tpl[0], tpl[1]), board))
+    
+    
+
+    # Helper function for generating moves for sliding pieces
+    def generate_sliding_moves(self, i, j, moves, dirs):
+        """
+        The same functionality is used for calculating both rook and bishop moves, except for the directions tuple.
+        Helper function reduces redundancy and extracts the calculations.
+        """
+        board = self.board.array
+        pin_dir = None
+
+        # Check if piece at (i, j) is pinned
+        for pin in self.pins:
+            if (i, j) == (pin[0], pin[1]):
+                pin_dir = pin[2], pin[3]
+
+        for dir in dirs:
+            if pin_dir and dir != pin_dir and dir != (-pin_dir[0], -pin_dir[1]):
+                continue  # skip if pinned
+            
+            row_dir, col_dir = dir[0], dir[1]
+            r, c = i + row_dir, j + col_dir
+
+            # while within the board, add legal moves
+            while 0 <= r < ROWS and 0 <= c < COLS:
+                if not board[r][c]:
+                    moves.append(Move((i, j), (r, c), board))
+                elif board[r][c] and board[r][c].color != board[i][j].color:
+                    moves.append(Move((i, j), (r, c), board))
+                    break
+                else:
+                    break
+                r += row_dir
+                c += col_dir
 
 
     def get_rook_moves(self, i, j, moves):
         """
-        Calculates all possible rook moves, and adds them to the moves list
+        Calculates all possible rook moves, and adds them to the moves list.
         """
-        board = self.board.array
-
-        def add_move(start, end, color):
-            """
-            Helper function extracting logic for simplicity.
-            """
-            if board[end[0]][end[1]] and board[end[0]][end[1]].color == color:
-                return False
-            moves.append(Move(start, end, board))
-            if board[end[0]][end[1]] and board[end[0]][end[1]].color == ('b' if color == 'w' else 'w'):
-                return False
-            return True
-
-        col = 'w' if self.white_to_move else 'b' # color of rook
-
-        u = i - 1
-        while u >= 0 and add_move((i, j), (u, j), col): # up
-            u -= 1
-        d = i + 1
-        while d < ROWS and add_move((i, j), (d, j), col): # down
-            d += 1
-        l = j - 1
-        while l >= 0 and add_move((i, j), (i, l), col): # left
-            l -=1
-        r = j + 1
-        while r < COLS and add_move((i, j), (i, r), col): # right
-            r += 1
+        dirs = ((1, 0), (-1, 0), (0, 1), (0, -1)) # orthogonal directions
+        self.generate_sliding_moves(i, j, moves, dirs)
 
 
     def get_bishop_moves(self, i, j, moves):
         """
         Calculates all possible rook moves, and adds them to the moves list
         """
-        board = self.board.array
-
-        def add_move(start, end, color):
-            """
-            Helper function extracting logic for simplicity.
-            """
-            if board[end[0]][end[1]] and board[end[0]][end[1]].color == color:
-                return False
-            moves.append(Move(start, end, board))
-            if board[end[0]][end[1]] and board[end[0]][end[1]].color == ('b' if color == 'w' else 'w'):
-                return False
-            return True
-        
-        col = 'w' if self.white_to_move else 'b'
-        
-        u = i - 1
-        l = j - 1
-        while (u >= 0 and l >= 0) and add_move((i,j), (u, l), col): # up and left
-            u -= 1
-            l -= 1
-
-        u = i - 1
-        r = j + 1
-        while (u >= 0 and r < COLS) and add_move((i, j), (u, r), col): # up and right
-            u -= 1
-            r += 1
-
-        d = i + 1
-        l = j - 1
-        while (d < ROWS and l >=0) and add_move((i, j), (d, l), col): # down and left
-            d += 1
-            l -= 1
-            
-        d = i + 1
-        r = j + 1
-        while (d < ROWS and r < COLS) and add_move((i, j), (d, r), col): # down and right
-            d += 1
-            r += 1
+        dirs = ((1, 1), (-1, -1), (1, -1), (-1, 1)) # diagonal directions
+        self.generate_sliding_moves(i, j, moves, dirs)
 
     def get_queen_moves(self, i, j, moves):
         """
