@@ -1,4 +1,5 @@
 import pygame as py
+import copy
 from .board import Board
 from .constants import ROWS, COLS, DSQ, LSQ, SQ_SIZE, START_FEN, ALL_DIR
 
@@ -22,8 +23,11 @@ class Game:
         self.in_check = False
         self.checks = []
         self.pins = []
+        self.castling_rights = Castling_Rights(True, True, True, True)
+        self.prev_castling_info = []
 
-    ############# DRAWING BLOCK #############
+
+    ########################### DRAWING BLOCK ###########################
     def show_bg(self, screen):
         for i in range(ROWS):
             for j in range(COLS):
@@ -37,9 +41,9 @@ class Game:
             for j in range(COLS):
                 if self.board.array[i][j]:
                     screen.blit(self.board.array[i][j].img, py.Rect(j*SQ_SIZE, i*SQ_SIZE, SQ_SIZE, SQ_SIZE))
-    ############ DRAWING BLOCK END ############
+    ########################## DRAWING BLOCK END ##########################
 
-    ########## MOVING BLOCK ###############    
+    ########################## MOVING BLOCK ###############################    
     def make_move(self, move):
 
         # Update pieces on board and swap turns
@@ -49,14 +53,41 @@ class Game:
         # Update move log
         self.move_log.append(move) 
 
-        # Update kin pos
-        if move.moved_piece.name == "king":
-          if self.white_to_move:
-              self.white_king_pos = (move.f_row, move.f_col)
-          elif not self.white_to_move:
-              self.black_king_pos = (move.f_row, move.f_col)
 
-        # swap turns
+        # Update kin pos and castling rights
+        if move.moved_piece.name == "king":
+            if move.i_col - move.f_col == -2: # Kingside Castle
+                self.board.array[move.i_row][move.i_col+1] = self.board.array[move.i_row][COLS-1]
+                self.board.array[move.i_row][COLS-1] = None
+            if move.i_col - move.f_col == 2: # Queenside Castle
+                self.board.array[move.i_row][move.i_col-1] = self.board.array[move.i_row][0]
+                self.board.array[move.i_row][0] = None
+            if self.white_to_move:
+                self.white_king_pos = (move.f_row, move.f_col)
+                if self.castling_rights.wqs or self.castling_rights.wks:
+                    self.castling_rights.wqs = False
+                    self.castling_rights.wks = False
+            else:
+                self.black_king_pos = (move.f_row, move.f_col)
+                if self.castling_rights.bqs or self.castling_rights.bks:
+                    self.castling_rights.bqs = False
+                    self.castling_rights.bks = False
+        
+        # Update rook castling  rights
+        if move.moved_piece.name == "rook":
+            if move.i_row == (ROWS - 1) and move.i_col == 0:
+                self.castling_rights.wqs = False
+            elif move.i_row == (ROWS - 1) and move.i_col == (COLS - 1):
+                self.castling_rights.wks = False
+            elif move.i_row == 0 and move.i_col == 0:
+                self.castling_rights.bqs = False
+            elif move.i_row == 0 and move.i_col == (COLS - 1):
+                self.castling_rights.bks = False
+
+        # Update castling log
+        self.prev_castling_info.append(Castling_Rights(self.castling_rights.wqs, self.castling_rights.wks, self.castling_rights.bqs, self.castling_rights.bks))
+
+        # Swap turns
         self.white_to_move = not self.white_to_move
 
     def undo_move(self):
@@ -64,12 +95,39 @@ class Game:
             return print("No moves to undo")
         else:
             move = self.move_log.pop()
+            self.prev_castling_info.pop()
+            board = self.board.array
+
             self.board.array[move.i_row][move.i_col] = move.moved_piece
             self.board.array[move.f_row][move.f_col] = move.captured_piece
+
+            # Update castling rights
+            temp = self.prev_castling_info[-1]
+            self.castling_rights = Castling_Rights(temp.wqs, temp.wks, temp.bqs, temp.bks) # NOTE: new object every time. Never reference.
+            
+            # Undo castling moves
+            if move.moved_piece.name == "king" and move.i_col - move.f_col == -2: # Kingside castle to be undone
+                board[move.i_row][COLS-1] = board[move.i_row][move.i_col+1]
+                board[move.i_row][move.i_col+1] = None
+
+            elif move.moved_piece.name == "king" and move.i_col - move.f_col == 2: # Queenside castle to be undone
+                board[move.i_row][0] = board[move.i_row][move.i_col-1]
+                board[move.i_row][move.i_col-1] = None
+
+            # Swap turns
             self.white_to_move = not self.white_to_move
-    ######## MOVING BLOCK END #############    
+
+            # Update king pos
+            if move.moved_piece.name == "king":
+                if self.white_to_move:
+                    self.white_king_pos = (move.i_row, move.i_col)
+                else:
+                    self.black_king_pos = (move.i_row, move.i_col)
+
+
+    ######################## MOVING BLOCK END #############################    
     
-    ############# CALCULATE LEGAL MOVES BLOCK #############
+    ################# CALCULATE LEGAL MOVES BLOCK #################
     def get_valid_moves(self):
 
         """
@@ -80,8 +138,9 @@ class Game:
         self.in_check, self.pins, self.checks = self.checks_and_pins()
         moves = []
 
-        print("in check:", self.in_check)
-        print("pins:", self.pins, "checks:", self.checks)
+
+        #print("in check:", self.in_check)
+        #print("pins:", self.pins, "checks:", self.checks)
 
         if self.white_to_move:
             king_row = self.white_king_pos[0]
@@ -263,16 +322,47 @@ class Game:
             else:
                 self.black_king_pos = tpl
             
-            in_check, x, y = self.checks_and_pins()
+            in_check, _, _ = self.checks_and_pins()
 
+            # Appending legal king moves
             if not in_check and (not board[tpl[0]][tpl[1]] or not board[tpl[0]][tpl[1]].color == ally): # safe empty or enemy square.
                 moves.append(Move((i, j), (tpl[0], tpl[1]), board))
+
+                # Further checking if castling is possible
+                if not in_check and tpl[1] == j+1:
+                    if self.white_to_move:
+                        if self.castling_rights.wks and tpl[1]+1 < COLS and not board[tpl[0]][tpl[1]] and not board[tpl[0]][tpl[1]+1]:
+                            self.white_king_pos = tpl[0], tpl[1]+1
+                            in_check, _, _ = self.checks_and_pins()
+                            if not in_check:
+                                moves.append(Move((i, j), (i, j+2), board)) # append white ks castling move
+                    else:
+                        if self.castling_rights.bks and tpl[1]+1 < COLS and not board[tpl[0]][tpl[1]] and not board[tpl[0]][tpl[1]+1]:
+                            self.black_king_pos = tpl[0], tpl[1] + 1
+                            in_check, _, _ = self.checks_and_pins()
+                            if not in_check:
+                                moves.append(Move((i, j), (i, j+2), board)) # append black ks castling move
+
+                if not in_check and tpl[1] == j-1: # If king can move ones towards queen, we can check if castling is possible
+                    if self.white_to_move:
+                        if self.castling_rights.wqs and not board[tpl[0]][tpl[1]] and not board[tpl[0]][tpl[1]-1] and not board[tpl[0]][tpl[1]-2]:
+                            self.white_king_pos = tpl[0], tpl[1]-1
+                            in_check, _, _ = self.checks_and_pins()
+                            if not in_check:
+                                moves.append(Move((i, j), (i, j-2), board)) # append white qs castling move
+                    else:
+                        if self.castling_rights.bqs and not board[tpl[0]][tpl[1]] and not board[tpl[0]][tpl[1]-1] and not board[tpl[0]][tpl[1]-2]:
+                            self.black_king_pos = tpl[0], tpl[1]-1
+                            in_check, _, _ = self.checks_and_pins()
+                            if not in_check:
+                                moves.append(Move((i, j), (i, j-2), board)) # append black qs castling move
 
             # reset king pos
             if ally == 'w':
                 self.white_king_pos = (i, j)
             else:
                 self.black_king_pos = (i, j)
+
 
     def get_pawn_moves(self, i, j, moves):
         """
@@ -418,7 +508,7 @@ class Game:
     ########## GET PIECE MOVES FUNCTIONS END ##########
 
 ##########################################################################
-############################ NEW CLASS ###################################
+############################ MOVE CLASS ###################################
 class Move():
     """
     Move class handles a chess "move" that a player can make, 
@@ -457,3 +547,16 @@ class Move():
         
 ################################ END OF MOVE CLASS ##################################
 #####################################################################################
+
+#####################################################################################
+################################## CASTLING RIGHTS CLASS ############################################
+
+class Castling_Rights():
+    def __init__(self, wqs, wks, bqs, bks):
+        self.wqs = wqs # white queenside
+        self.wks = wks # white kingside
+        self.bqs = bqs # black queenside
+        self.bks = bks # black kingside
+
+    def rights(self):
+        print("white ks:", self.wks, "white qs:", self.wqs, "\nblack ks:", self.bks, "black qs:", self.bqs)
