@@ -46,12 +46,13 @@ def main():
                   player_clicked.append(sq_selected)
                   if len(player_clicked) == 2:
                      move = Move(player_clicked[0], player_clicked[1], game.board.array)
-                     if move in moves:
-                        game.make_move(move)
-                        move_made = True
-                        player_clicked = []
-                        sq_selected = ()
-                     else:
+                     for i in range(len(moves)):
+                        if move == moves[i]:
+                           game.make_move(moves[i])
+                           move_made = True
+                           player_clicked = []
+                           sq_selected = ()
+                     if not move_made:
                         player_clicked = [sq_selected] # invalid moves, move your click to the invalid square
                
                # undo press

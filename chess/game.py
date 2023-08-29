@@ -1,5 +1,4 @@
 import pygame as py
-import copy
 from .board import Board
 from .constants import ROWS, COLS, DSQ, LSQ, SQ_SIZE, START_FEN, ALL_DIR
 
@@ -24,7 +23,8 @@ class Game:
         self.checks = []
         self.pins = []
         self.castling_rights = Castling_Rights(True, True, True, True)
-        self.prev_castling_info = []
+        self.prev_castling_info = [Castling_Rights(True, True, True, True)]
+        self.en_passant_possible = ()
 
 
     ########################### DRAWING BLOCK ###########################
@@ -46,32 +46,41 @@ class Game:
     ########################## MOVING BLOCK ###############################    
     def make_move(self, move):
 
+        board = self.board.array
+
         # Update pieces on board and swap turns
-        self.board.array[move.i_row][move.i_col] = None
-        self.board.array[move.f_row][move.f_col] = move.moved_piece
-
+        board[move.i_row][move.i_col] = None
+        board[move.f_row][move.f_col] = move.moved_piece
+        
         # Update move log
-        self.move_log.append(move) 
+        self.move_log.append(move)
 
+        # En Passant
+        dir = 1 if self.white_to_move else -1
+        if move.moved_piece.name == "pawn":
+            if move.en_passant:
+                board[move.i_row][move.f_col] = None
+            if abs(move.i_row - move.f_row) == 2:
+                self.en_passant_possible = move.f_row + dir, move.i_col
+            else:
+                self.en_passant_possible = ()
 
         # Update kin pos and castling rights
         if move.moved_piece.name == "king":
             if move.i_col - move.f_col == -2: # Kingside Castle
-                self.board.array[move.i_row][move.i_col+1] = self.board.array[move.i_row][COLS-1]
-                self.board.array[move.i_row][COLS-1] = None
+                board[move.i_row][move.i_col+1] = board[move.i_row][COLS-1]
+                board[move.i_row][COLS-1] = None
             if move.i_col - move.f_col == 2: # Queenside Castle
-                self.board.array[move.i_row][move.i_col-1] = self.board.array[move.i_row][0]
-                self.board.array[move.i_row][0] = None
+                board[move.i_row][move.i_col-1] = board[move.i_row][0]
+                board[move.i_row][0] = None
             if self.white_to_move:
                 self.white_king_pos = (move.f_row, move.f_col)
                 if self.castling_rights.wqs or self.castling_rights.wks:
-                    self.castling_rights.wqs = False
-                    self.castling_rights.wks = False
+                    self.castling_rights.wqs = self.castling_rights.wks = False
             else:
                 self.black_king_pos = (move.f_row, move.f_col)
                 if self.castling_rights.bqs or self.castling_rights.bks:
-                    self.castling_rights.bqs = False
-                    self.castling_rights.bks = False
+                    self.castling_rights.bqs = self.castling_rights.bks = False
         
         # Update rook castling  rights
         if move.moved_piece.name == "rook":
@@ -83,9 +92,10 @@ class Game:
                 self.castling_rights.bqs = False
             elif move.i_row == 0 and move.i_col == (COLS - 1):
                 self.castling_rights.bks = False
+        
 
         # Update castling log
-        self.prev_castling_info.append(Castling_Rights(self.castling_rights.wqs, self.castling_rights.wks, self.castling_rights.bqs, self.castling_rights.bks))
+        self.prev_castling_info.append(Castling_Rights(self.castling_rights.wqs, self.castling_rights.wks, self.castling_rights.bqs, self.castling_rights.bks))       
 
         # Swap turns
         self.white_to_move = not self.white_to_move
@@ -100,6 +110,11 @@ class Game:
 
             self.board.array[move.i_row][move.i_col] = move.moved_piece
             self.board.array[move.f_row][move.f_col] = move.captured_piece
+
+            if move.en_passant:
+                self.board.array[move.i_row][move.f_col] = move.captured_piece
+                self.board.array[move.f_row][move.f_col] = None
+                self.en_passant_possible = (move.f_row, move.f_col)
 
             # Update castling rights
             temp = self.prev_castling_info[-1]
@@ -138,10 +153,6 @@ class Game:
         self.in_check, self.pins, self.checks = self.checks_and_pins()
         moves = []
 
-
-        #print("in check:", self.in_check)
-        #print("pins:", self.pins, "checks:", self.checks)
-
         if self.white_to_move:
             king_row = self.white_king_pos[0]
             king_col = self.white_king_pos[1]
@@ -176,7 +187,6 @@ class Game:
                 return moves
             
             else: # double check
-                print("DOUBLE-CHECK")
                 self.get_king_moves(king_row, king_col, moves)
                 return moves
 
@@ -401,12 +411,26 @@ class Game:
                 moves.append(Move((i, j), (i + dir, j - 1), board))
             if right_capture_possible:
                 moves.append(Move((i, j), (i + dir, j + 1), board))
+            
+            # En Passant Captures
+            if self.en_passant_possible != ():
+                if self.en_passant_possible[0] - dir == i and abs(self.en_passant_possible[1] - j) == 1:
+                    moves.append(Move((i, j), (self.en_passant_possible[0], self.en_passant_possible[1]), board, True))
 
-        elif 0 < j < (COLS - 1): # if pinned and capture stays within board (pinned == True implicit).
+        elif 0 < j < (COLS - 1): # if pawn is pinned and capture stays within board (pinned == True implicit).
 
             # Logic allowing the capture of pinning piece.
             diagonal_capture_possible = board[i + pin_dir[0]][j + pin_dir[1]] and board[i + pin_dir[0]][j + pin_dir[1]].color == enemy
 
+            # Capturing in en passant direction
+            if self.en_passant_possible != ():
+                r = self.en_passant_possible[0] # en_passant row
+                c = self.en_passant_possible[1] # en_passant col
+                pinned_en_passant_possible = (r, c) == (i+pin_dir[0], j+pin_dir[1]) # en passant square in pin direction
+                if pinned_en_passant_possible:
+                    moves.append(Move((i, j), (self.en_passant_possible[0], self.en_passant_possible[1]), board, True))
+
+            # Pinned diagonally, then capturing on said diag is possible
             if diagonal_capture_possible: 
                 moves.append(Move((i, j), (i + pin_dir[0], j + pin_dir[1]), board))
 
@@ -520,16 +544,17 @@ class Move():
     col_to_file = {0: 'a', 1: 'b', 2: 'c', 3: 'd', 4: 'e', 5: 'f', 6: 'g', 7: 'h'}
 
 
-    def __init__(self, init_pos, final_pos, array):
+    def __init__(self, init_pos, final_pos, array, en_passant = False):
         self.i_row = init_pos[0]
         self.i_col = init_pos[1]
         self.f_row = final_pos[0]
         self.f_col = final_pos[1]
         self.array = array
         self.moved_piece = array[self.i_row][self.i_col]
-        self.captured_piece = array[self.f_row][self.f_col]
+        self.en_passant = en_passant
+        self.captured_piece = array[self.f_row][self.f_col] if not self.en_passant else array[self.i_row][self.f_col]
         self.moveID = 1000*self.i_row+100*self.i_col+10*self.f_row+self.f_col
-
+    
     def __eq__(self, other):
         if isinstance(other, Move):
             return True if self.moveID == other.moveID else False
@@ -557,6 +582,3 @@ class Castling_Rights():
         self.wks = wks # white kingside
         self.bqs = bqs # black queenside
         self.bks = bks # black kingside
-
-    def rights(self):
-        print("white ks:", self.wks, "white qs:", self.wqs, "\nblack ks:", self.bks, "black qs:", self.bqs)
