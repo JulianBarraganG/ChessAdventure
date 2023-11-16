@@ -1,6 +1,7 @@
 import pygame as py
 from .board import Board
 from .constants import ROWS, COLS, DSQ, LSQ, SQ_SIZE, START_FEN, ALL_DIR
+from .pieces import Queen, Rook, Bishop, Knight
 
 class Game:
     """
@@ -44,13 +45,17 @@ class Game:
     ########################## DRAWING BLOCK END ##########################
 
     ########################## MOVING BLOCK ###############################    
-    def make_move(self, move):
+    def make_move(self, move, promote_to=None):
 
         board = self.board.array
 
         # Update pieces on board and swap turns
         board[move.i_row][move.i_col] = None
-        board[move.f_row][move.f_col] = move.moved_piece
+        if not move.pawn_promotion:
+            board[move.f_row][move.f_col] = move.moved_piece
+        else:
+            board[move.f_row][move.f_col] = promote_to
+
         
         # Update move log
         self.move_log.append(move)
@@ -381,7 +386,7 @@ class Game:
         board = self.board.array
         enemy = 'b' if self.white_to_move else 'w'
         dir = -1 if self.white_to_move else 1
-        start_row = 6 if self.white_to_move else 1
+        start_row = 6 if self.board.array[i][j].color == 'w' else 1
         end_row = 0 if self.white_to_move else 7
         pinned = False
         pin_dir = None
@@ -393,13 +398,16 @@ class Game:
                 pin_dir = pin[2], pin[3]
 
         # Extraction of logic
-        forward_empty = not board[i + dir][j]
-        two_squares_empty = not board[i + 2 * dir][j] and i == start_row # allow for double advance first pawn move.
-        left_capture_possible = j > 0 and board[i + dir][j - 1] and board[i + dir][j - 1].color == enemy
-        right_capture_possible = j < COLS - 1 and board[i + dir][j + 1] and board[i + dir][j + 1].color == enemy
+        forward_empty = not board[i + dir][j] if 0 <= i + dir < ROWS else False
+        two_squares_empty = not board[i + 2 * dir][j] and i == start_row if 0 <= i + 2 * dir < ROWS else False  # allow for double advance first pawn move.
+        left_capture_possible = j > 0 and board[i + dir][j - 1] and board[i + dir][j - 1].color == enemy if 0 <= i + dir < ROWS else False
+        right_capture_possible = j < COLS - 1 and board[i + dir][j + 1] and board[i + dir][j + 1].color == enemy if 0 <= i + dir < ROWS else False
 
         if not pinned: # add normal legal moves/captures.
             
+            if i + dir == end_row and not board[i + dir][j]: # append pawn promotion move.
+                moves.append(Move((i, j), (i + dir, j), board, pawn_promotion=True))
+
             # Add advancing moves
             if forward_empty and (i + dir != end_row):
                 moves.append(Move((i, j), (i + dir, j), board))
@@ -408,10 +416,10 @@ class Game:
 
             # Add captures
             if left_capture_possible:
-                moves.append(Move((i, j), (i + dir, j - 1), board))
+                moves.append(Move((i, j), (i + dir, j - 1), board)) if i + dir != end_row else moves.append(Move((i, j), (i + dir, j - 1), board, pawn_promotion=True))
             if right_capture_possible:
-                moves.append(Move((i, j), (i + dir, j + 1), board))
-            
+                moves.append(Move((i, j), (i + dir, j + 1), board)) if i + dir != end_row else moves.append(Move((i, j), (i + dir, j + 1), board, pawn_promotion=True))
+
             # En Passant Captures
             if self.en_passant_possible != ():
                 if self.en_passant_possible[0] - dir == i and abs(self.en_passant_possible[1] - j) == 1:
@@ -544,7 +552,7 @@ class Move():
     col_to_file = {0: 'a', 1: 'b', 2: 'c', 3: 'd', 4: 'e', 5: 'f', 6: 'g', 7: 'h'}
 
 
-    def __init__(self, init_pos, final_pos, array, en_passant = False):
+    def __init__(self, init_pos, final_pos, array, en_passant = False, pawn_promotion = False):
         self.i_row = init_pos[0]
         self.i_col = init_pos[1]
         self.f_row = final_pos[0]
@@ -552,6 +560,7 @@ class Move():
         self.array = array
         self.moved_piece = array[self.i_row][self.i_col]
         self.en_passant = en_passant
+        self.pawn_promotion = pawn_promotion
         self.captured_piece = array[self.f_row][self.f_col] if not self.en_passant else array[self.i_row][self.f_col]
         self.moveID = 1000*self.i_row+100*self.i_col+10*self.f_row+self.f_col
     
