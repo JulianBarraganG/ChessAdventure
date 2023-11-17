@@ -73,4 +73,38 @@ class Board:
                 col = 0
             elif char.isspace():
                 break
-            
+
+    def board_to_fen(self):
+        """
+        Iterates through the array (Board) and returns fen position.
+        """
+        board = self.array
+        fen_position = ""
+        piece_mapping = {
+            'pawn' : 'p',
+            'king' : 'k',
+            'queen' : 'q',
+            'rook' : 'r',
+            'bishop' : 'b',
+            'knight' : 'n'
+        }
+
+        for i in range(ROWS):
+            empty_squares = 0
+            for j in range(COLS):
+                if board[i][j]:
+                    fen_position += piece_mapping[board[i][j].name] if board[i][j].color == "b" else piece_mapping[board[i][j].name].upper()
+                elif not board[i][j]:
+                    while not board[i][j]:
+                        empty_squares += 1
+                        if board[i][j + 1 if j + 1 < COLS else j]:
+                            fen_position += str(empty_squares)
+                            empty_squares = 0
+                        elif j == COLS - 1:
+                            fen_position += str(empty_squares)
+                            empty_squares = 0
+                            break
+                        break
+            if i < ROWS - 1:
+                fen_position += "/"
+        return fen_position

@@ -1,6 +1,6 @@
 import pygame as py
 from .board import Board
-from .constants import ROWS, COLS, DSQ, LSQ, SQ_SIZE, START_FEN, ALL_DIR
+from .constants import ROWS, COLS, DSQ, LSQ, SQ_SIZE, START_FEN, ALL_DIR, START_FEN
 from .pieces import Queen, Rook, Bishop, Knight
 
 class Game:
@@ -16,6 +16,13 @@ class Game:
         self.next_player = 'w'
         self.board = Board()
         self.board.reset_board()
+        self.fen_log = [START_FEN]
+        self.fen_count = {START_FEN:1} # Keeps track of three-fold repeated position.
+        # Game Over booleans
+        self.draw_by_repetition = False
+        self.stale_mate = False
+        self.check_mate = False
+        ####################
         self.move_log = []
         self.white_to_move = True
         self.white_king_pos = (7, 4)
@@ -60,6 +67,18 @@ class Game:
         # Update move log
         self.move_log.append(move)
 
+        # Update fen log
+        latest_fen = self.board.board_to_fen()
+        self.fen_log.append(latest_fen)
+
+        # Count repeated fen count, update draw_by_rep bool if threefold is reached.
+        if latest_fen in self.fen_count:
+            self.fen_count[latest_fen] += 1
+            if self.fen_count[latest_fen] == 3:
+                self.draw_by_repetition = True
+        else:
+            self.fen_count[latest_fen] = 1
+
         # En Passant
         dir = 1 if self.white_to_move else -1
         if move.moved_piece.name == "pawn":
@@ -69,6 +88,8 @@ class Game:
                 self.en_passant_possible = move.f_row + dir, move.i_col
             else:
                 self.en_passant_possible = ()
+        else:
+            self.en_passant_possible = ()
 
         # Update kin pos and castling rights
         if move.moved_piece.name == "king":
@@ -105,6 +126,7 @@ class Game:
         # Swap turns
         self.white_to_move = not self.white_to_move
 
+
     def undo_move(self):
         if len(self.move_log) == 0:
             return print("No moves to undo")
@@ -133,6 +155,14 @@ class Game:
             elif move.moved_piece.name == "king" and move.i_col - move.f_col == 2: # Queenside castle to be undone
                 board[move.i_row][0] = board[move.i_row][move.i_col-1]
                 board[move.i_row][move.i_col-1] = None
+
+            # Update fen counts and log
+            undone_fen = self.fen_log.pop()
+            if undone_fen in self.fen_count:
+                if self.fen_count[undone_fen] == 1:
+                    del self.fen_count[undone_fen]
+                else:
+                    self.fen_count[undone_fen] -=1
 
             # Swap turns
             self.white_to_move = not self.white_to_move
@@ -189,14 +219,23 @@ class Game:
                     if moves[i].moved_piece.name != "king":
                         if (moves[i].f_row, moves[i].f_col) not in valid_squares:
                             moves.remove(moves[i])
+                if len(moves) == 0:
+                    self.check_mate = True
+                for move in moves:
+                    print(move.en_passant)
                 return moves
             
             else: # double check
                 self.get_king_moves(king_row, king_col, moves)
+                if len(moves) == 0:
+                    self.in_check = True
                 return moves
 
-        else: # not in check                
-            return self.get_all_moves()
+        else: # not in check
+            moves = self.get_all_moves()
+            if len(moves) == 0:
+                self.stale_mate = True                
+            return moves
         
     def get_all_moves(self):
         moves = []
@@ -434,7 +473,7 @@ class Game:
             if self.en_passant_possible != ():
                 r = self.en_passant_possible[0] # en_passant row
                 c = self.en_passant_possible[1] # en_passant col
-                pinned_en_passant_possible = (r, c) == (i+pin_dir[0], j+pin_dir[1]) # en passant square in pin direction
+                pinned_en_passant_possible = (r, c) == (i + pin_dir[0], j + pin_dir[1]) # en passant square in pin direction
                 if pinned_en_passant_possible:
                     moves.append(Move((i, j), (self.en_passant_possible[0], self.en_passant_possible[1]), board, True))
 
