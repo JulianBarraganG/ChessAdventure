@@ -74,12 +74,13 @@ class Board:
             elif char.isspace():
                 break
 
-    def board_to_fen(self):
+    def board_to_fen(self, game):
         """
-        Iterates through the array (Board) and returns fen position.
+        Takes the game state (game) as input and returns the game state as a FEN notation string (international chess string gamestate convention).
         """
         board = self.array
         fen_position = ""
+        fen_string = ""
         piece_mapping = {
             'pawn' : 'p',
             'king' : 'k',
@@ -88,7 +89,9 @@ class Board:
             'bishop' : 'b',
             'knight' : 'n'
         }
+        cr = game.castling_rights
 
+        # Convert board position into fen_string
         for i in range(ROWS):
             empty_squares = 0
             for j in range(COLS):
@@ -107,4 +110,33 @@ class Board:
                         break
             if i < ROWS - 1:
                 fen_position += "/"
-        return fen_position
+
+        # At position as the first part of the fen_string
+        fen_string += fen_position
+
+        # Assigns turn to FEN
+        fen_string += " w " if game.white_to_move else " b "
+
+        # Assign castling rights
+        if cr.wks:
+            fen_string += "K"
+        if cr.wqs:
+            fen_string += "Q"
+        if cr.bks:
+            fen_string += "k"
+        if cr.bqs:
+            fen_string += "q"
+        if not cr.wks and not cr.wqs and not cr.bks and not cr.bqs:
+            fen_string += "-"
+
+
+        # Assign en passant
+        fen_string += " "+ game.en_passant_square
+
+        # Assign HALF move counter
+        fen_string += " " + str(game.half_move)
+
+        # Assign FULL move counter
+        fen_string += " " + str(game.full_move)
+        print(fen_string)
+        return fen_string

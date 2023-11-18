@@ -1,7 +1,7 @@
 import pygame
 
 #### CANVAS CONSTANTS ####
-WIDTH, HEIGHT = 600, 600 #The size of the canvas
+WIDTH, HEIGHT = 760, 760 #The size of the canvas
 FPS = 60
 ROWS = COLS = 8
 SQ_SIZE = WIDTH // COLS # 800 // 8 = 100. The square size of a square in pixels.
@@ -17,7 +17,7 @@ DSQ = LBROWN
 LSQ = WHITE
 
 ##### STARTING FEN POS #####
-START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
+START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 0"
 
 ##### BOARD DIRECTIONS ####
 ALL_DIR = ((-1, 0), # up

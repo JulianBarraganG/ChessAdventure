@@ -1,6 +1,6 @@
 import pygame as py
 from .board import Board
-from .constants import ROWS, COLS, DSQ, LSQ, SQ_SIZE, START_FEN, ALL_DIR, START_FEN
+from .constants import ROWS, COLS, DSQ, LSQ, SQ_SIZE, START_FEN, ALL_DIR
 from .pieces import Queen, Rook, Bishop, Knight
 
 class Game:
@@ -10,15 +10,19 @@ class Game:
     Game is the frontmost class
     """
 
-    def __init__(self):
+    def __init__(self, flipping=False):
         self.get_move_functions = {'pawn' : self.get_pawn_moves, 'rook' : self.get_rook_moves, 'knight' : self.get_knight_moves, 
                                    'queen': self.get_queen_moves, 'king': self.get_king_moves, 'bishop': self.get_bishop_moves}
-        self.next_player = 'w'
         self.board = Board()
         self.board.reset_board()
+        ## FEN related variables ##
         self.fen_log = [START_FEN]
-        self.fen_count = {START_FEN:1} # Keeps track of three-fold repeated position.
+        self.fen_count = {START_FEN.split()[0]:1} # Keeps track of three-fold repeated position.
+        self.flipping = flipping
+        self.half_move = 0
+        self.full_move = 0
         # Game Over booleans
+        self.draw_fifty = False
         self.draw_by_repetition = False
         self.stale_mate = False
         self.check_mate = False
@@ -33,6 +37,7 @@ class Game:
         self.castling_rights = Castling_Rights(True, True, True, True)
         self.prev_castling_info = [Castling_Rights(True, True, True, True)]
         self.en_passant_possible = ()
+        self.en_passant_square = "-"
 
 
     ########################### DRAWING BLOCK ###########################
@@ -45,16 +50,25 @@ class Game:
                     py.draw.rect(screen, DSQ, (j*SQ_SIZE, i*SQ_SIZE, SQ_SIZE, SQ_SIZE))
     
     def show_pieces(self, screen):
-        for i in range(ROWS):
-            for j in range(COLS):
-                if self.board.array[i][j]:
-                    screen.blit(self.board.array[i][j].img, py.Rect(j*SQ_SIZE, i*SQ_SIZE, SQ_SIZE, SQ_SIZE))
+        if not self.flipping or self.white_to_move:
+            for i in range(ROWS):
+                for j in range(COLS):
+                    if self.board.array[i][j]:
+                        screen.blit(self.board.array[i][j].img, py.Rect(j*SQ_SIZE, i*SQ_SIZE, SQ_SIZE, SQ_SIZE))
+        elif self.flipping and not self.white_to_move:
+            for i in range(ROWS):
+                for j in range(COLS):
+                    if self.board.array[i][j]:
+                        screen.blit(self.board.array[i][j].img, py.Rect(j*SQ_SIZE, (abs(i-(ROWS-1)))*SQ_SIZE, SQ_SIZE, SQ_SIZE))
+
     ########################## DRAWING BLOCK END ##########################
 
     ########################## MOVING BLOCK ###############################    
     def make_move(self, move, promote_to=None):
 
         board = self.board.array
+        self.full_move += 1
+        self.half_move += 1
 
         # Update pieces on board and swap turns
         board[move.i_row][move.i_col] = None
@@ -63,33 +77,25 @@ class Game:
         else:
             board[move.f_row][move.f_col] = promote_to
 
-        
-        # Update move log
-        self.move_log.append(move)
-
-        # Update fen log
-        latest_fen = self.board.board_to_fen()
-        self.fen_log.append(latest_fen)
-
-        # Count repeated fen count, update draw_by_rep bool if threefold is reached.
-        if latest_fen in self.fen_count:
-            self.fen_count[latest_fen] += 1
-            if self.fen_count[latest_fen] == 3:
-                self.draw_by_repetition = True
-        else:
-            self.fen_count[latest_fen] = 1
-
         # En Passant
         dir = 1 if self.white_to_move else -1
         if move.moved_piece.name == "pawn":
+            self.half_move = 0
             if move.en_passant:
+                self.en_passant_square = move.en_passant_square
                 board[move.i_row][move.f_col] = None
             if abs(move.i_row - move.f_row) == 2:
                 self.en_passant_possible = move.f_row + dir, move.i_col
             else:
                 self.en_passant_possible = ()
+                self.en_passant_square = "-"
         else:
             self.en_passant_possible = ()
+            self.en_passant_square = "-"
+        
+        # Update half move for captures
+        if move.captured_piece:
+            self.half_move = 0
 
         # Update kin pos and castling rights
         if move.moved_piece.name == "king":
@@ -123,6 +129,26 @@ class Game:
         # Update castling log
         self.prev_castling_info.append(Castling_Rights(self.castling_rights.wqs, self.castling_rights.wks, self.castling_rights.bqs, self.castling_rights.bks))       
 
+        # Update move log
+        self.move_log.append(move)
+
+        # Update fen log
+        fen = self.board.board_to_fen(self)
+        self.fen_log.append(fen)
+        latest_fen = fen.split()[0] # latest_fen means latest FEN position
+
+        # Count repeated fen count, update draw_by_rep bool if threefold is reached.
+        if latest_fen in self.fen_count:
+            self.fen_count[latest_fen] += 1
+            if self.fen_count[latest_fen] == 3:
+                self.draw_by_repetition = True
+        else:
+            self.fen_count[latest_fen] = 1
+        
+        # fifty move rule draw
+        if self.half_move == 50:
+            self.draw_fifty = True
+
         # Swap turns
         self.white_to_move = not self.white_to_move
 
@@ -131,6 +157,8 @@ class Game:
         if len(self.move_log) == 0:
             return print("No moves to undo")
         else:
+            self.full_move -= 1
+            undone_fen = self.fen_log.pop()
             move = self.move_log.pop()
             self.prev_castling_info.pop()
             board = self.board.array
@@ -157,12 +185,18 @@ class Game:
                 board[move.i_row][move.i_col-1] = None
 
             # Update fen counts and log
-            undone_fen = self.fen_log.pop()
-            if undone_fen in self.fen_count:
-                if self.fen_count[undone_fen] == 1:
-                    del self.fen_count[undone_fen]
+            undone_pos = undone_fen.split()[0]
+            if undone_pos in self.fen_count:
+                if self.fen_count[undone_pos] == 1:
+                    del self.fen_count[undone_pos]
                 else:
-                    self.fen_count[undone_fen] -=1
+                    self.fen_count[undone_pos] -=1
+
+            # Update half_move
+            self.half_move = int((self.fen_log[-1].split())[-2]) # after popping, take last FEN in log to update half_move
+
+            # Update en_passant_square
+            self.en_passant_square = self.fen_log[-1].split()[-3]
 
             # Swap turns
             self.white_to_move = not self.white_to_move
@@ -173,7 +207,11 @@ class Game:
                     self.white_king_pos = (move.i_row, move.i_col)
                 else:
                     self.black_king_pos = (move.i_row, move.i_col)
-
+            
+            # Undo Checkmate, Stalemate and Draw by rep
+            self.check_mate = False
+            self.stale_mate = False
+            self.draw_by_repetition = False
 
     ######################## MOVING BLOCK END #############################    
     
@@ -221,8 +259,6 @@ class Game:
                             moves.remove(moves[i])
                 if len(moves) == 0:
                     self.check_mate = True
-                for move in moves:
-                    print(move.en_passant)
                 return moves
             
             else: # double check
@@ -451,7 +487,7 @@ class Game:
             if forward_empty and (i + dir != end_row):
                 moves.append(Move((i, j), (i + dir, j), board))
                 if two_squares_empty:
-                    moves.append(Move((i, j), (i + 2 * dir, j), board))
+                    moves.append(Move((i, j), (i + 2 * dir, j), board, en_passant=True))
 
             # Add captures
             if left_capture_possible:
@@ -602,6 +638,7 @@ class Move():
         self.pawn_promotion = pawn_promotion
         self.captured_piece = array[self.f_row][self.f_col] if not self.en_passant else array[self.i_row][self.f_col]
         self.moveID = 1000*self.i_row+100*self.i_col+10*self.f_row+self.f_col
+        self.en_passant_square = "-" if not self.en_passant else self.col_to_file[self.f_col] + self.row_to_rank[self.f_row + (1 if self.moved_piece.color == 'w' else -1)]
     
     def __eq__(self, other):
         if isinstance(other, Move):
@@ -618,6 +655,7 @@ class Move():
         elif self.moved_piece.name == "pawn" and self.captured_piece:
             return self.col_to_file[self.f_col] + "x" + self.col_to_file[self.i_col] + self.row_to_rank[self.f_row]
         
+
 ################################ END OF MOVE CLASS ##################################
 #####################################################################################
 
@@ -626,7 +664,7 @@ class Move():
 
 class Castling_Rights():
     def __init__(self, wqs, wks, bqs, bks):
-        self.wqs = wqs # white queenside
         self.wks = wks # white kingside
-        self.bqs = bqs # black queenside
+        self.wqs = wqs # white queenside
         self.bks = bks # black kingside
+        self.bqs = bqs # black queenside
