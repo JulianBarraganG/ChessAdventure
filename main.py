@@ -5,15 +5,17 @@ from chess.pieces import *
 from chess.game import Game, Move
 
 
-
 def draw_gamestate(game, screen, sq_selected):
       game.show_bg(screen)
       game.show_pieces(screen)
 
       if sq_selected:
-        row, col = sq_selected
-        highlight_rect = py.Rect(col * SQ_SIZE, row * SQ_SIZE, SQ_SIZE, SQ_SIZE)
-        py.draw.rect(screen, py.Color('Yellow'), highlight_rect, 4)
+         row, col = sq_selected
+         if game.white_to_move or not game.flipping:
+            highlight_rect = py.Rect(col * SQ_SIZE, row * SQ_SIZE, SQ_SIZE, SQ_SIZE) 
+         elif not game.white_to_move and game.flipping:
+            highlight_rect = py.Rect(col* SQ_SIZE, abs(row-(ROWS-1)) * SQ_SIZE, SQ_SIZE, SQ_SIZE)
+         py.draw.rect(screen, py.Color('Yellow'), highlight_rect, 4)
 
 def get_promotion_choice(screen):
    font = py.font.Font(None, 24)
@@ -69,7 +71,7 @@ def check_mate_text(screen):
    py.display.flip()
 
 # Allows player to restart or quit
-def game_over():
+def restart():
    while True:
       for event in py.event.get():
          if event.type == py.KEYDOWN:
@@ -87,11 +89,13 @@ def main():
    clock = py.time.Clock()
    screen.fill(py.Color("white"))
    run = True
-   game = Game()
+   game = Game(flipping=False) # change if board should be flipped
    sq_selected = () # tuple of coordinates for selected square.
    player_clicked = [] # list of 
    moves = game.get_valid_moves()
    move_made = False
+   game_over = (game.check_mate or game.stale_mate or game.draw_by_repetition or game.draw_fifty)
+
 
    while run:
       for event in py.event.get():
@@ -101,7 +105,11 @@ def main():
             # mouse clicks
             elif event.type == py.MOUSEBUTTONDOWN:
                pos = py.mouse.get_pos()
-               row, col = pos[1]//SQ_SIZE, pos[0]//SQ_SIZE # (i, j) of clicked square.
+               # Uncomment below to flip
+               if game.white_to_move or not game.flipping:
+                  row, col = pos[1]//SQ_SIZE, pos[0]//SQ_SIZE
+               elif not game.white_to_move and game.flipping:
+                  row, col = abs(pos[1]-HEIGHT)//SQ_SIZE, pos[0]//SQ_SIZE # (i, j) of clicked square.
                if sq_selected == (row, col): 
                   sq_selected = () # deselect
                   player_clicked = [] # clear click-queue
@@ -125,20 +133,22 @@ def main():
                      if not move_made:
                         player_clicked = [sq_selected] # invalid moves, move your click to the invalid square
 
-            # Check for draw
-            elif game.draw_by_repetition:
-               draw_text(screen)
-               game_over()
-
-            # Check for check mate
-            elif game.check_mate:
-               check_mate_text(screen)
-               game_over()
             
-            # Check for stalemate
-            elif game.stale_mate:
-               draw_text(screen)
-               game_over()
+            # Check for draw
+            elif game_over:
+               if game.draw_by_repetition:
+                  draw_text(screen)
+                  restart()
+
+               # Check for check mate
+               elif game.check_mate:
+                  check_mate_text(screen)
+                  restart()
+
+               # Check for stalemate
+               elif game.stale_mate:
+                  draw_text(screen)
+                  restart()
 
             # undo press
             elif event.type == py.KEYDOWN:
@@ -148,13 +158,8 @@ def main():
 
             if move_made:
                moves = game.get_valid_moves()
+               game_over = (game.check_mate or game.stale_mate or game.draw_by_repetition or game.draw_fifty)
                move_made = False
-               # if len(moves) == 0 and game.in_check:
-               #    check_mate_text(screen)
-               #    game_over()
-               # elif len(moves) == 0 and not game.in_check:
-               #    draw_text(screen)
-               #    game_over()
             
                      
       clock.tick(FPS) #sets tickrate to 60
