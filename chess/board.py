@@ -138,5 +138,4 @@ class Board:
 
         # Assign FULL move counter
         fen_string += " " + str(game.full_move)
-        print(fen_string)
         return fen_string

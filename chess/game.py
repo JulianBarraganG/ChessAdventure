@@ -10,7 +10,7 @@ class Game:
     Game is the frontmost class
     """
 
-    def __init__(self, flipping=False):
+    def __init__(self, flipping=False, flipped=False):
         self.get_move_functions = {'pawn' : self.get_pawn_moves, 'rook' : self.get_rook_moves, 'knight' : self.get_knight_moves, 
                                    'queen': self.get_queen_moves, 'king': self.get_king_moves, 'bishop': self.get_bishop_moves}
         self.board = Board()
@@ -19,6 +19,7 @@ class Game:
         self.fen_log = [START_FEN]
         self.fen_count = {START_FEN.split()[0]:1} # Keeps track of three-fold repeated position.
         self.flipping = flipping
+        self.flipped = flipped if not self.flipping else False
         self.half_move = 0
         self.full_move = 0
         # Game Over booleans
@@ -50,12 +51,12 @@ class Game:
                     py.draw.rect(screen, DSQ, (j*SQ_SIZE, i*SQ_SIZE, SQ_SIZE, SQ_SIZE))
     
     def show_pieces(self, screen):
-        if not self.flipping or self.white_to_move:
+        if (not self.flipping or self.white_to_move) and not self.flipped:
             for i in range(ROWS):
                 for j in range(COLS):
                     if self.board.array[i][j]:
                         screen.blit(self.board.array[i][j].img, py.Rect(j*SQ_SIZE, i*SQ_SIZE, SQ_SIZE, SQ_SIZE))
-        elif self.flipping and not self.white_to_move:
+        elif (self.flipping and not self.white_to_move) or self.flipped:
             for i in range(ROWS):
                 for j in range(COLS):
                     if self.board.array[i][j]:

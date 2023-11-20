@@ -4,6 +4,13 @@ from chess.constants import *
 from chess.pieces import *
 from chess.game import Game, Move
 
+def get_flipped_coordinates(pos, flipping, flipped, white_to_move):
+    if (flipping and not white_to_move) or flipped:
+         row, col = abs(pos[1] - HEIGHT) // SQ_SIZE, pos[0] // SQ_SIZE
+    else:
+         row, col = pos[1] // SQ_SIZE, pos[0] // SQ_SIZE
+
+    return row, col
 
 def draw_gamestate(game, screen, sq_selected):
       game.show_bg(screen)
@@ -11,10 +18,10 @@ def draw_gamestate(game, screen, sq_selected):
 
       if sq_selected:
          row, col = sq_selected
-         if game.white_to_move or not game.flipping:
-            highlight_rect = py.Rect(col * SQ_SIZE, row * SQ_SIZE, SQ_SIZE, SQ_SIZE) 
-         elif not game.white_to_move and game.flipping:
-            highlight_rect = py.Rect(col* SQ_SIZE, abs(row-(ROWS-1)) * SQ_SIZE, SQ_SIZE, SQ_SIZE)
+         if (not game.white_to_move and game.flipping) or game.flipped:
+            highlight_rect = py.Rect(col * SQ_SIZE, abs(row - (ROWS - 1)) * SQ_SIZE, SQ_SIZE, SQ_SIZE)  
+         else:
+            highlight_rect = py.Rect(col * SQ_SIZE, row * SQ_SIZE, SQ_SIZE, SQ_SIZE)
          py.draw.rect(screen, py.Color('Yellow'), highlight_rect, 4)
 
 def get_promotion_choice(screen):
@@ -89,7 +96,7 @@ def main():
    clock = py.time.Clock()
    screen.fill(py.Color("white"))
    run = True
-   game = Game(flipping=False) # change if board should be flipped
+   game = Game(flipping=False, flipped=False) # flipping: flips board after each play. flipped: black's perspective
    sq_selected = () # tuple of coordinates for selected square.
    player_clicked = [] # list of 
    moves = game.get_valid_moves()
@@ -102,14 +109,21 @@ def main():
             if event.type == py.QUIT:
                run = False
             
+            # key presses
+            elif event.type == py.KEYDOWN:
+               if event.key == py.K_f:
+                  game.flipped = not game.flipped
+                  game.flipping = False
+               elif event.key == py.K_s:
+                  game.flipping = not game.flipping
+                  game.flipped = False
+
+            
             # mouse clicks
             elif event.type == py.MOUSEBUTTONDOWN:
                pos = py.mouse.get_pos()
-               # Uncomment below to flip
-               if game.white_to_move or not game.flipping:
-                  row, col = pos[1]//SQ_SIZE, pos[0]//SQ_SIZE
-               elif not game.white_to_move and game.flipping:
-                  row, col = abs(pos[1]-HEIGHT)//SQ_SIZE, pos[0]//SQ_SIZE # (i, j) of clicked square.
+               row, col = get_flipped_coordinates(pos, game.flipping, game.flipped, game.white_to_move)
+               # (i, j) of clicked square
                if sq_selected == (row, col): 
                   sq_selected = () # deselect
                   player_clicked = [] # clear click-queue
