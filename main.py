@@ -4,6 +4,8 @@ from chess.constants import *
 from chess.pieces import *
 from chess.game import Game, Move
 
+FEN = None
+
 def get_flipped_coordinates(pos, flipping, flipped, white_to_move):
     if (flipping and not white_to_move) or flipped:
          row, col = abs(pos[1] - HEIGHT) // SQ_SIZE, pos[0] // SQ_SIZE
@@ -97,6 +99,10 @@ def main():
    screen.fill(py.Color("white"))
    run = True
    game = Game(flipping=False, flipped=False) # flipping: flips board after each play. flipped: black's perspective
+   # Change fen below for different start pos
+   if FEN:
+      game.board.fen_reader(game, fen=FEN)
+   print("w" if game.white_to_move else "b")
    sq_selected = () # tuple of coordinates for selected square.
    player_clicked = [] # list of 
    moves = game.get_valid_moves()
@@ -111,7 +117,11 @@ def main():
             
             # key presses
             elif event.type == py.KEYDOWN:
-               if event.key == py.K_f:
+               # undo press
+               if event.key == py.K_LEFT:
+                  game.undo_move()
+                  move_made = True   
+               elif event.key == py.K_f:
                   game.flipped = not game.flipped
                   game.flipping = False
                elif event.key == py.K_s:
@@ -164,11 +174,6 @@ def main():
                   draw_text(screen)
                   restart()
 
-            # undo press
-            elif event.type == py.KEYDOWN:
-               if event.key == py.K_LEFT:
-                  game.undo_move()
-                  move_made = True
 
             if move_made:
                moves = game.get_valid_moves()

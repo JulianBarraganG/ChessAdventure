@@ -1,7 +1,8 @@
 import pygame as py
 from .board import Board
-from .constants import ROWS, COLS, DSQ, LSQ, SQ_SIZE, START_FEN, ALL_DIR
+from .constants import ROWS, COLS, DSQ, LSQ, SQ_SIZE, START_FEN, ALL_DIR, ROW_TO_RANK, COL_TO_FILE
 from .pieces import Queen, Rook, Bishop, Knight
+from .castling import Castling_Rights
 
 class Game:
     """
@@ -85,6 +86,7 @@ class Game:
             if move.en_passant:
                 self.en_passant_square = move.en_passant_square
                 board[move.i_row][move.f_col] = None
+                self.en_passant_possible = ()
             if abs(move.i_row - move.f_row) == 2:
                 self.en_passant_possible = move.f_row + dir, move.i_col
             else:
@@ -133,7 +135,10 @@ class Game:
         # Update move log
         self.move_log.append(move)
 
-        # Update fen log
+        # Swap turns
+        self.white_to_move = not self.white_to_move
+
+        # Update fen log 
         fen = self.board.board_to_fen(self)
         self.fen_log.append(fen)
         latest_fen = fen.split()[0] # latest_fen means latest FEN position
@@ -149,9 +154,6 @@ class Game:
         # fifty move rule draw
         if self.half_move == 50:
             self.draw_fifty = True
-
-        # Swap turns
-        self.white_to_move = not self.white_to_move
 
 
     def undo_move(self):
@@ -624,8 +626,8 @@ class Move():
     which piece was moved, what piece was captured etc.
     """
 
-    row_to_rank = {0: '8', 1: '7', 2: '6', 3: '5', 4: '4', 5: '3', 6: '2', 7: '1'}
-    col_to_file = {0: 'a', 1: 'b', 2: 'c', 3: 'd', 4: 'e', 5: 'f', 6: 'g', 7: 'h'}
+    row_to_rank = ROW_TO_RANK
+    col_to_file = COL_TO_FILE
 
 
     def __init__(self, init_pos, final_pos, array, en_passant = False, pawn_promotion = False):
@@ -659,13 +661,3 @@ class Move():
 
 ################################ END OF MOVE CLASS ##################################
 #####################################################################################
-
-#####################################################################################
-################################## CASTLING RIGHTS CLASS ############################################
-
-class Castling_Rights():
-    def __init__(self, wqs, wks, bqs, bks):
-        self.wks = wks # white kingside
-        self.wqs = wqs # white queenside
-        self.bks = bks # black kingside
-        self.bqs = bqs # black queenside

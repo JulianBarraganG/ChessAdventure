@@ -29,3 +29,11 @@ ALL_DIR = ((-1, 0), # up
            (-1, -1), # up left
            (-1, 1) # up right
            )
+
+# For constructing PGN notation
+ROW_TO_RANK = {0: '8', 1: '7', 2: '6', 3: '5', 4: '4', 5: '3', 6: '2', 7: '1'}
+COL_TO_FILE = {0: 'a', 1: 'b', 2: 'c', 3: 'd', 4: 'e', 5: 'f', 6: 'g', 7: 'h'}
+
+# Inverse dictionaries
+RANK_TO_ROW = {v: k for k, v in ROW_TO_RANK.items()}
+FILE_TO_COL = {v: k for k, v in COL_TO_FILE.items()}
