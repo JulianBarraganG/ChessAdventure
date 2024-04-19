@@ -8,7 +8,7 @@ FEN = None
 
 def get_flipped_coordinates(pos, flipping, flipped, white_to_move):
     if (flipping and not white_to_move) or flipped:
-         row, col = abs(pos[1] - HEIGHT) // SQ_SIZE, pos[0] // SQ_SIZE
+         row, col = abs(pos[1] - HEIGHT) // SQ_SIZE, abs(pos[0] - WIDTH) // SQ_SIZE
     else:
          row, col = pos[1] // SQ_SIZE, pos[0] // SQ_SIZE
 
@@ -21,7 +21,7 @@ def draw_gamestate(game, screen, sq_selected):
       if sq_selected:
          row, col = sq_selected
          if (not game.white_to_move and game.flipping) or game.flipped:
-            highlight_rect = py.Rect(col * SQ_SIZE, abs(row - (ROWS - 1)) * SQ_SIZE, SQ_SIZE, SQ_SIZE)  
+            highlight_rect = py.Rect(abs(col - (COLS - 1)) * SQ_SIZE, abs(row - (ROWS - 1)) * SQ_SIZE, SQ_SIZE, SQ_SIZE)  
          else:
             highlight_rect = py.Rect(col * SQ_SIZE, row * SQ_SIZE, SQ_SIZE, SQ_SIZE)
          py.draw.rect(screen, py.Color('Yellow'), highlight_rect, 4)
@@ -102,7 +102,6 @@ def main():
    # Change fen below for different start pos
    if FEN:
       game.board.fen_reader(game, fen=FEN)
-   print("w" if game.white_to_move else "b")
    sq_selected = () # tuple of coordinates for selected square.
    player_clicked = [] # list of 
    moves = game.get_valid_moves()

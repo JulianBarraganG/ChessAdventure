@@ -61,7 +61,7 @@ class Game:
             for i in range(ROWS):
                 for j in range(COLS):
                     if self.board.array[i][j]:
-                        screen.blit(self.board.array[i][j].img, py.Rect(j*SQ_SIZE, (abs(i-(ROWS-1)))*SQ_SIZE, SQ_SIZE, SQ_SIZE))
+                        screen.blit(self.board.array[i][j].img, py.Rect(abs(j-(COLS-1))*SQ_SIZE, (abs(i-(ROWS-1)))*SQ_SIZE, SQ_SIZE, SQ_SIZE))
 
     ########################## DRAWING BLOCK END ##########################
 
