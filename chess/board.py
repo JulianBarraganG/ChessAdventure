@@ -1,6 +1,7 @@
-from .constants import *
-from .pieces import *
-from .castling import Castling_Rights
+import numpy as np
+from chess.constants import *
+from chess.pieces import Rook, Pawn, Knight, King, Queen, Bishop
+from chess.castling import Castling_Rights
 
 class Board:
     """
@@ -9,7 +10,7 @@ class Board:
     """
 
     def __init__(self):
-        self.array = [[None]*COLS for _ in range(ROWS)]
+        self.array = np.empty((8, 8), dtype=object)
 
     def _start_pos(self, color):
         """
@@ -19,24 +20,24 @@ class Board:
 
         # Add pawns to array
         for j in range(COLS):
-            self.array[pawn_row][j]= Pawn(pawn_row, j, color)
+            self.array[pawn_row, j]= Pawn(pawn_row, j, color) # type: ignore
 
         # Add pieces to array
-        self.array[piece_row][0] = Rook(piece_row, 0, color)
-        self.array[piece_row][7] = Rook(piece_row, 7, color)
+        self.array[piece_row, 0] = Rook(piece_row, 0, color) # type: ignore
+        self.array[piece_row, 7] = Rook(piece_row, 7, color) # type: ignore
 
-        self.array[piece_row][1] = Knight(piece_row, 1, color)
-        self.array[piece_row][6] = Knight(piece_row, 6, color)
+        self.array[piece_row, 1] = Knight(piece_row, 1, color) # type: ignore
+        self.array[piece_row, 6] = Knight(piece_row, 6, color) # type: ignore
 
-        self.array[piece_row][2] = Bishop(piece_row, 2, color)
-        self.array[piece_row][5] = Bishop(piece_row, 5, color)
+        self.array[piece_row, 2] = Bishop(piece_row, 2, color) # type: ignore
+        self.array[piece_row, 5] = Bishop(piece_row, 5, color) # type: ignore
 
-        self.array[piece_row][3] = Queen(piece_row, 3, color)
+        self.array[piece_row, 3] = Queen(piece_row, 3, color) # type: ignore
 
-        self.array[piece_row][4] = King(piece_row, 4, color)
+        self.array[piece_row, 4] = King(piece_row, 4, color) # type: ignore
 
     def reset_board(self):
-        self.array = [[None]*COLS for _ in range(ROWS)] # clears the board.
+        self.array = np.empty((8, 8), dtype=object)
         self._start_pos('w')
         self._start_pos('b')
 
@@ -46,7 +47,7 @@ class Board:
         Modifies the array of the board class.
         Modifies game state (i.e. castling rights, full- and half moves etc.)
         """
-        self.array = [[None] * COLS for _ in range(ROWS)]  # clears the board.
+        self.array = np.empty((8, 8), dtype=object) # clears the board.
         row = 0
         col = 0
     
@@ -71,6 +72,10 @@ class Board:
                 piece_class = piece_mapping[char.lower()]
                 color = 'w' if char.isupper() else 'b'
                 self.array[row][col] = piece_class(row, col, color)
+                if char == 'K':
+                    game.white_king_pos = (row, col)
+                elif char == 'k':
+                    game.black_king_pos = (row, col)
                 col += 1
             elif char == '/':
                 row += 1
