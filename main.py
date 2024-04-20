@@ -145,9 +145,8 @@ def main():
                         if move == moves[i]:
                            if moves[i].pawn_promotion:
                               choice = get_promotion_choice(screen)
-                              promote_to = {'q': Queen, 'r': Rook, 'b': Bishop, 'n': Knight}[choice]
-                              game.make_move(moves[i], promote_to=promote_to(moves[i].f_row, moves[i].f_col,
-                                                                                    ("w" if game.white_to_move else "b")))                           
+                              promote_to = {'q': QUEEN, 'r': ROOK, 'b': BISHOP, 'n': KNIGHT}[choice]
+                              game.make_move(moves[i], promote_to=promote_to + (W if game.white_to_move else B))                  
                            else:
                               game.make_move(moves[i])
                            move_made = True

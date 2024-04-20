@@ -1,7 +1,6 @@
 import pygame as py
 from .board import Board
-from .constants import ROWS, COLS, DSQ, LSQ, SQ_SIZE, START_FEN, ALL_DIR, ROW_TO_RANK, COL_TO_FILE
-from .pieces import Queen, Rook, Bishop, Knight
+from .constants import *
 from .castling import Castling_Rights
 
 class Game:
@@ -12,17 +11,24 @@ class Game:
     """
 
     def __init__(self, flipping=False, flipped=False):
-        self.get_move_functions = {'pawn' : self.get_pawn_moves, 'rook' : self.get_rook_moves, 'knight' : self.get_knight_moves, 
-                                   'queen': self.get_queen_moves, 'king': self.get_king_moves, 'bishop': self.get_bishop_moves}
+        # Can be shorter if we change get_all_moves()
+        self.get_move_functions = {PAWN+W: self.get_pawn_moves, PAWN+B: self.get_pawn_moves, 
+                                   ROOK+W: self.get_rook_moves, ROOK+B: self.get_rook_moves,
+                                   KNIGHT+W: self.get_knight_moves, KNIGHT+B: self.get_knight_moves, 
+                                   QUEEN+W: self.get_queen_moves, QUEEN+B: self.get_queen_moves, 
+                                   KING+W: self.get_king_moves, KING+B: self.get_king_moves, 
+                                   BISHOP+W: self.get_bishop_moves, BISHOP+B: self.get_bishop_moves}
         self.board = Board()
         self.board.reset_board()
+        self.images = preload_images()
         ## FEN related variables ##
         self.fen_log = [START_FEN]
         self.fen_count = {START_FEN.split()[0]:1} # Keeps track of three-fold repeated position.
-        self.flipping = flipping
-        self.flipped = flipped if not self.flipping else False
         self.half_move = 0
         self.full_move = 0
+        # Board flipping vars
+        self.flipping = flipping
+        self.flipped = flipped if not self.flipping else False
         # Game Over booleans
         self.draw_fifty = False
         self.draw_by_repetition = False
@@ -55,37 +61,37 @@ class Game:
         if (not self.flipping or self.white_to_move) and not self.flipped:
             for i in range(ROWS):
                 for j in range(COLS):
-                    if self.board.array[i][j]:
-                        screen.blit(self.board.array[i][j].img, py.Rect(j*SQ_SIZE, i*SQ_SIZE, SQ_SIZE, SQ_SIZE))
+                    if self.board.array[i, j]:
+                        screen.blit(self.images[(self.board.array[i, j])], py.Rect(j*SQ_SIZE, i*SQ_SIZE, SQ_SIZE, SQ_SIZE))
         elif (self.flipping and not self.white_to_move) or self.flipped:
             for i in range(ROWS):
                 for j in range(COLS):
-                    if self.board.array[i][j]:
-                        screen.blit(self.board.array[i][j].img, py.Rect(abs(j-(COLS-1))*SQ_SIZE, (abs(i-(ROWS-1)))*SQ_SIZE, SQ_SIZE, SQ_SIZE))
+                    if self.board.array[i, j]:
+                        screen.blit(self.images[self.board.array[i, j]]), py.Rect(abs(j-(COLS-1))*SQ_SIZE, (abs(i-(ROWS-1)))*SQ_SIZE, SQ_SIZE, SQ_SIZE)
 
     ########################## DRAWING BLOCK END ##########################
 
     ########################## MOVING BLOCK ###############################    
-    def make_move(self, move, promote_to=None):
+    def make_move(self, move, promote_to=0):
 
         board = self.board.array
         self.full_move += 1
         self.half_move += 1
 
         # Update pieces on board and swap turns
-        board[move.i_row][move.i_col] = None
+        board[move.i_row, move.i_col] = 0
         if not move.pawn_promotion:
-            board[move.f_row][move.f_col] = move.moved_piece
+            board[move.f_row, move.f_col] = move.moved_piece
         else:
-            board[move.f_row][move.f_col] = promote_to
+            board[move.f_row, move.f_col] = promote_to
 
         # En Passant
         dir = 1 if self.white_to_move else -1
-        if move.moved_piece.name == "pawn":
+        if (move.moved_piece & PAWN) == PAWN:
             self.half_move = 0
             if move.en_passant:
                 self.en_passant_square = move.en_passant_square
-                board[move.i_row][move.f_col] = None
+                board[move.i_row, move.f_col] = 0
                 self.en_passant_possible = ()
             if abs(move.i_row - move.f_row) == 2:
                 self.en_passant_possible = move.f_row + dir, move.i_col
@@ -101,13 +107,13 @@ class Game:
             self.half_move = 0
 
         # Update kin pos and castling rights
-        if move.moved_piece.name == "king":
+        if (move.moved_piece & KING) == KING:
             if move.i_col - move.f_col == -2: # Kingside Castle
-                board[move.i_row][move.i_col+1] = board[move.i_row][COLS-1]
-                board[move.i_row][COLS-1] = None
+                board[move.i_row, move.i_col+1] = board[move.i_row, COLS-1]
+                board[move.i_row, COLS-1] = 0
             if move.i_col - move.f_col == 2: # Queenside Castle
-                board[move.i_row][move.i_col-1] = board[move.i_row][0]
-                board[move.i_row][0] = None
+                board[move.i_row, move.i_col-1] = board[move.i_row, 0]
+                board[move.i_row, 0] = 0
             if self.white_to_move:
                 self.white_king_pos = (move.f_row, move.f_col)
                 if self.castling_rights.wqs or self.castling_rights.wks:
@@ -118,7 +124,7 @@ class Game:
                     self.castling_rights.bqs = self.castling_rights.bks = False
         
         # Update rook castling  rights
-        if move.moved_piece.name == "rook":
+        if (move.moved_piece & ROOK) == ROOK:
             if move.i_row == (ROWS - 1) and move.i_col == 0:
                 self.castling_rights.wqs = False
             elif move.i_row == (ROWS - 1) and move.i_col == (COLS - 1):
@@ -166,12 +172,12 @@ class Game:
             self.prev_castling_info.pop()
             board = self.board.array
 
-            self.board.array[move.i_row][move.i_col] = move.moved_piece
-            self.board.array[move.f_row][move.f_col] = move.captured_piece
+            self.board.array[move.i_row, move.i_col] = move.moved_piece
+            self.board.array[move.f_row, move.f_col] = move.captured_piece
 
             if move.en_passant:
-                self.board.array[move.i_row][move.f_col] = move.captured_piece
-                self.board.array[move.f_row][move.f_col] = None
+                self.board.array[move.i_row, move.f_col] = move.captured_piece
+                self.board.array[move.f_row, move.f_col] = 0
                 self.en_passant_possible = (move.f_row, move.f_col)
 
             # Update castling rights
@@ -179,13 +185,13 @@ class Game:
             self.castling_rights = Castling_Rights(temp.wqs, temp.wks, temp.bqs, temp.bks) # NOTE: new object every time. Never reference.
             
             # Undo castling moves
-            if move.moved_piece.name == "king" and move.i_col - move.f_col == -2: # Kingside castle to be undone
-                board[move.i_row][COLS-1] = board[move.i_row][move.i_col+1]
-                board[move.i_row][move.i_col+1] = None
+            if (move.moved_piece & KING) == KING and move.i_col - move.f_col == -2: # Kingside castle to be undone
+                board[move.i_row, COLS-1] = board[move.i_row, move.i_col+1]
+                board[move.i_row, move.i_col+1] = 0
 
-            elif move.moved_piece.name == "king" and move.i_col - move.f_col == 2: # Queenside castle to be undone
-                board[move.i_row][0] = board[move.i_row][move.i_col-1]
-                board[move.i_row][move.i_col-1] = None
+            elif (move.moved_piece & KING) == KING and move.i_col - move.f_col == 2: # Queenside castle to be undone
+                board[move.i_row, 0] = board[move.i_row, move.i_col-1]
+                board[move.i_row, move.i_col-1] = 0
 
             # Update fen counts and log
             undone_pos = undone_fen.split()[0]
@@ -205,7 +211,7 @@ class Game:
             self.white_to_move = not self.white_to_move
 
             # Update king pos
-            if move.moved_piece.name == "king":
+            if (move.moved_piece & KING) == KING:
                 if self.white_to_move:
                     self.white_king_pos = (move.i_row, move.i_col)
                 else:
@@ -239,7 +245,8 @@ class Game:
         if self.in_check:
             if len(self.checks) == 1: # 1 piece checking
                 the_check = self.checks[0]  # 4-tuple with pos of checking piece and direction.
-                if board[the_check[0]][the_check[1]].name != "knight": #if checking piece is not a knight
+                checking_piece = board[the_check[0], the_check[1]]
+                if (checking_piece & KNIGHT) != KNIGHT: # if checking piece is not a knight
                     checking_piece_row = the_check[0]
                     checking_piece_col = the_check[1]
                     valid_squares = []
@@ -257,7 +264,7 @@ class Game:
 
                 moves = self.get_all_moves()
                 for i in range(len(moves) - 1, -1, -1):
-                    if moves[i].moved_piece.name != "king":
+                    if not (moves[i].moved_piece & KING == KING): # check if the moved piece is a king, if NOT then proceed.
                         if (moves[i].f_row, moves[i].f_col) not in valid_squares:
                             moves.remove(moves[i])
                 if len(moves) == 0:
@@ -280,12 +287,12 @@ class Game:
         moves = []
         for i in range(ROWS):
             for j in range(COLS):
-                if self.board.array[i][j]:
-                    turn = self.board.array[i][j].color
+                if self.board.array[i, j]:
+                    turn = W if (self.board.array[i, j] & W) == W else B
                 else: 
                     continue
-                if (turn == 'w' and self.white_to_move) or (turn == 'b' and not self.white_to_move):
-                    piece = self.board.array[i][j].name
+                if (turn == W and self.white_to_move) or (turn == B and not self.white_to_move):
+                    piece = self.board.array[i, j]
                     self.get_move_functions[piece](i, j, moves)
 
         return moves
@@ -307,8 +314,8 @@ class Game:
         init_col = k[1]
 
         # identity colors for algorithm
-        ally = 'w' if self.white_to_move else 'b'
-        enemy = 'b' if self.white_to_move else 'w'
+        ally_mask = W if self.white_to_move else B
+        enemy_mask = B if self.white_to_move else W
         
         ################# KNIGHT CHECKS #####################
         """ Handles the knight checks seperately from all other checks."""
@@ -324,12 +331,12 @@ class Game:
         )
 
         for pat in knight_pattern:
-            if 0 <= pat[0] <= 7 and 0 <= pat[1] <= 7 and board[pat[0]][pat[1]]:
-                potential_knight = board[pat[0]][pat[1]]
-                if potential_knight.name == "knight" and potential_knight.color == enemy:
+            if 0 <= pat[0] <= 7 and 0 <= pat[1] <= 7 and board[pat[0], pat[1]]:
+                potential_knight = board[pat[0], pat[1]]
+                if (potential_knight & KNIGHT) == KNIGHT and (potential_knight & 24) == enemy_mask: 
                     in_check = True
                     checks.append((pat[0], pat[1], (pat[0]-init_row), (pat[1]-init_col))) # append knight checks. 
-                    #Will uniquely have either row or col dir +-2
+                    # Will uniquely have either row or col dir +-2
 
         ######################################################
 
@@ -344,27 +351,27 @@ class Game:
                 end_row = init_row + d[0] * i
                 end_col = init_col + d[1] * i
                 if 0 <= end_row < ROWS and 0 <= end_col < COLS:
-                    if self.board.array[end_row][end_col]:
-                        end_piece = self.board.array[end_row][end_col]
-                        if end_piece.color == ally:
-                            if end_piece.name == "king": # "allied king" encounters occur internally in get_king_moves()
+                    if self.board.array[end_row, end_col]:
+                        end_piece = self.board.array[end_row, end_col]
+                        if (end_piece & 24) == ally_mask: # end piece is an ally
+                            if (end_piece & KING) == KING: # "allied king" encounters occur internally in get_king_moves()
                                 continue
                             if possible_pins == ():
                                 possible_pins = (end_row, end_col, d[0], d[1])
                             else:
                                 break # double allied piece, can't be any pin
-                        elif end_piece.color == enemy:
-                            name = end_piece.name
+                        elif (end_piece & 24) == enemy_mask: # end piece is an enemy
+                            piece = end_piece - enemy_mask
                             # for all dir 4 possible check-patterns:
                             # 1) orthogonal rook checks
                             # 2) diagonal bishop checks
                             # 3) any dir queen check
                             # 4) pawn checks (1 square away)    
-                            if (name == 'rook' and 0 <= j <= 3) \
-                                    or (name == 'bishop' and 4 <= j <= 7) \
-                                    or (name == 'pawn' and i == 1 and ally == 'w' and (j == 6 or j == 7)) \
-                                    or (name == 'pawn' and i == 1 and ally == 'b' and (j == 4 or j == 5)) \
-                                    or name == 'queen':
+                            if (piece == ROOK and 0 <= j <= 3) \
+                                    or (piece == BISHOP and 4 <= j <= 7) \
+                                    or (piece == PAWN and i == 1 and ally_mask == W and (j == 6 or j == 7)) \
+                                    or (piece == PAWN and i == 1 and ally_mask == B and (j == 4 or j == 5)) \
+                                    or piece == QUEEN:
 
                                 if possible_pins == ():
                                     in_check = True
@@ -401,7 +408,8 @@ class Game:
             (i+1, j), # down
         )
 
-        ally = 'w' if self.white_to_move else 'b' # whites turn
+        ally_mask = W if self.white_to_move else B # 16 if it is white to move, ow/ 8
+        # enemy_mask = B if self.white_to_move else W # 8 if it is white to move, ow/ 16
 
         # filter out moves that move "out of the board"
         possible_moves = tuple(filter(lambda move: move[0] >= 0 and move[0] < (ROWS) and move[1] >= 0 and move[1] < (COLS), move_pattern))
@@ -410,7 +418,7 @@ class Game:
         for tpl in possible_moves:
 
             # temp move king pos to see if it enters check
-            if ally == 'w':
+            if ally_mask == W:
                 self.white_king_pos = tpl
             else:
                 self.black_king_pos = tpl
@@ -418,19 +426,20 @@ class Game:
             in_check, _, _ = self.checks_and_pins()
 
             # Appending legal king moves
-            if not in_check and (not board[tpl[0]][tpl[1]] or not board[tpl[0]][tpl[1]].color == ally): # safe empty or enemy square.
+            target_square = board[tpl[0], tpl[1]]
+            if not in_check and (not target_square or not (target_square & 24) == ally_mask): # safe empty or enemy square.
                 moves.append(Move((i, j), (tpl[0], tpl[1]), board))
 
                 # Further checking if castling is possible
                 if not in_check and tpl[1] == j+1:
                     if self.white_to_move:
-                        if self.castling_rights.wks and tpl[1]+1 < COLS and not board[tpl[0]][tpl[1]] and not board[tpl[0]][tpl[1]+1]:
+                        if self.castling_rights.wks and tpl[1]+1 < COLS and not board[tpl[0], tpl[1]] and not board[tpl[0], tpl[1]+1]:
                             self.white_king_pos = tpl[0], tpl[1]+1
                             in_check, _, _ = self.checks_and_pins()
                             if not in_check:
                                 moves.append(Move((i, j), (i, j+2), board)) # append white ks castling move
                     else:
-                        if self.castling_rights.bks and tpl[1]+1 < COLS and not board[tpl[0]][tpl[1]] and not board[tpl[0]][tpl[1]+1]:
+                        if self.castling_rights.bks and tpl[1]+1 < COLS and not board[tpl[0], tpl[1]] and not board[tpl[0], tpl[1]+1]:
                             self.black_king_pos = tpl[0], tpl[1] + 1
                             in_check, _, _ = self.checks_and_pins()
                             if not in_check:
@@ -438,20 +447,20 @@ class Game:
 
                 if not in_check and tpl[1] == j-1: # If king can move ones towards queen, we can check if castling is possible
                     if self.white_to_move:
-                        if self.castling_rights.wqs and not board[tpl[0]][tpl[1]] and not board[tpl[0]][tpl[1]-1] and not board[tpl[0]][tpl[1]-2]:
+                        if self.castling_rights.wqs and not board[tpl[0], tpl[1]] and not board[tpl[0], tpl[1]-1] and not board[tpl[0], tpl[1]-2]:
                             self.white_king_pos = tpl[0], tpl[1]-1
                             in_check, _, _ = self.checks_and_pins()
                             if not in_check:
                                 moves.append(Move((i, j), (i, j-2), board)) # append white qs castling move
                     else:
-                        if self.castling_rights.bqs and not board[tpl[0]][tpl[1]] and not board[tpl[0]][tpl[1]-1] and not board[tpl[0]][tpl[1]-2]:
+                        if self.castling_rights.bqs and not board[tpl[0], tpl[1]] and not board[tpl[0], tpl[1]-1] and not board[tpl[0], tpl[1]-2]:
                             self.black_king_pos = tpl[0], tpl[1]-1
                             in_check, _, _ = self.checks_and_pins()
                             if not in_check:
                                 moves.append(Move((i, j), (i, j-2), board)) # append black qs castling move
 
             # reset king pos
-            if ally == 'w':
+            if ally_mask == W:
                 self.white_king_pos = (i, j)
             else:
                 self.black_king_pos = (i, j)
@@ -462,9 +471,9 @@ class Game:
         Calculates all possible pawn moves, and adds them to the moves list
         """
         board = self.board.array
-        enemy = 'b' if self.white_to_move else 'w'
+        enemy_mask = B if self.white_to_move else W
         dir = -1 if self.white_to_move else 1
-        start_row = 6 if self.board.array[i][j].color == 'w' else 1
+        start_row = 6 if (self.board.array[i, j] & 24) == W else 1
         end_row = 0 if self.white_to_move else 7
         pinned = False
         pin_dir = None
@@ -476,14 +485,14 @@ class Game:
                 pin_dir = pin[2], pin[3]
 
         # Extraction of logic
-        forward_empty = not board[i + dir][j] if 0 <= i + dir < ROWS else False
-        two_squares_empty = not board[i + 2 * dir][j] and i == start_row if 0 <= i + 2 * dir < ROWS else False  # allow for double advance first pawn move.
-        left_capture_possible = j > 0 and board[i + dir][j - 1] and board[i + dir][j - 1].color == enemy if 0 <= i + dir < ROWS else False
-        right_capture_possible = j < COLS - 1 and board[i + dir][j + 1] and board[i + dir][j + 1].color == enemy if 0 <= i + dir < ROWS else False
+        forward_empty = not board[i + dir, j] if 0 <= i + dir < ROWS else False
+        two_squares_empty = not board[i + 2 * dir, j] and i == start_row if 0 <= i + 2 * dir < ROWS else False  # allow for double advance first pawn move.
+        left_capture_possible = j > 0 and board[i + dir, j - 1] and (board[i + dir, j - 1] & 24) == enemy_mask if 0 <= i + dir < ROWS else False
+        right_capture_possible = j < COLS - 1 and board[i + dir, j + 1] and (board[i + dir, j + 1] & 24) == enemy_mask if 0 <= i + dir < ROWS else False
 
         if not pinned: # add normal legal moves/captures.
             
-            if i + dir == end_row and not board[i + dir][j]: # append pawn promotion move.
+            if i + dir == end_row and not board[i + dir, j]: # append pawn promotion move.
                 moves.append(Move((i, j), (i + dir, j), board, pawn_promotion=True))
 
             # Add advancing moves
@@ -506,7 +515,7 @@ class Game:
         elif 0 < j < (COLS - 1): # if pawn is pinned and capture stays within board (pinned == True implicit).
 
             # Logic allowing the capture of pinning piece.
-            diagonal_capture_possible = board[i + pin_dir[0]][j + pin_dir[1]] and board[i + pin_dir[0]][j + pin_dir[1]].color == enemy
+            diagonal_capture_possible = board[i + pin_dir[0], j + pin_dir[1]] and (board[i + pin_dir[0], j + pin_dir[1]] & 24) == enemy_mask
 
             # Capturing in en passant direction
             if self.en_passant_possible != ():
@@ -549,13 +558,14 @@ class Game:
             (i+2, j+1)
         )
 
-        ally = 'w' if self.white_to_move else 'b'
+        enemy_mask = B if self.white_to_move else W # 0b0100 if white to move else 0b1000.
 
         possible_moves = tuple(filter(lambda move: move[0] >= 0 and move[0] < (ROWS) and move[1] >= 0 and move[1] < (COLS), move_pattern))
 
         if not pinned:
             for tpl in possible_moves:
-                if not board[tpl[0]][tpl[1]] or not board[tpl[0]][tpl[1]].color == ally:
+                target_square = board[tpl[0], tpl[1]]
+                if target_square == EMPTY or (target_square & 24) == enemy_mask: # target square & 24 keeps the 16 or 8 bit position of target square
                     moves.append(Move((i, j), (tpl[0], tpl[1]), board))
     
     
@@ -583,9 +593,9 @@ class Game:
 
             # while within the board, add legal moves
             while 0 <= r < ROWS and 0 <= c < COLS:
-                if not board[r][c]:
+                if not board[r, c]:
                     moves.append(Move((i, j), (r, c), board))
-                elif board[r][c] and board[r][c].color != board[i][j].color:
+                elif board[r, c] and ((board[r, c] & 24) != (board[i, j] & 24)): # if board[r,c] is not empty and board[r, c] shares color with board[i, j] (pieces)
                     moves.append(Move((i, j), (r, c), board))
                     break
                 else:
@@ -636,12 +646,12 @@ class Move():
         self.f_row = final_pos[0]
         self.f_col = final_pos[1]
         self.array = array
-        self.moved_piece = array[self.i_row][self.i_col]
+        self.moved_piece = array[self.i_row, self.i_col]
         self.en_passant = en_passant
         self.pawn_promotion = pawn_promotion
-        self.captured_piece = array[self.f_row][self.f_col] if not self.en_passant else array[self.i_row][self.f_col]
+        self.captured_piece = array[self.f_row, self.f_col] if not self.en_passant else array[self.i_row, self.f_col]
         self.moveID = 1000*self.i_row+100*self.i_col+10*self.f_row+self.f_col
-        self.en_passant_square = "-" if not self.en_passant else self.col_to_file[self.f_col] + self.row_to_rank[self.f_row + (1 if self.moved_piece.color == 'w' else -1)]
+        self.en_passant_square = "-" if not self.en_passant else self.col_to_file[self.f_col] + self.row_to_rank[self.f_row + (1 if (self.moved_piece & 24) == W else -1)]
     
     def __eq__(self, other):
         if isinstance(other, Move):
@@ -653,9 +663,9 @@ class Move():
     
     # implement fully later.
     def get_chess_notation(self):
-        if self.moved_piece.name == "pawn" and not self.captured_piece:
+        if (self.moved_piece & PAWN) == PAWN and not self.captured_piece:
             return self.get_rank_file()
-        elif self.moved_piece.name == "pawn" and self.captured_piece:
+        elif (self.moved_piece & PAWN) == PAWN and self.captured_piece:
             return self.col_to_file[self.f_col] + "x" + self.col_to_file[self.i_col] + self.row_to_rank[self.f_row]
         
 

@@ -1,6 +1,5 @@
 import numpy as np
 from chess.constants import *
-from chess.pieces import Rook, Pawn, Knight, King, Queen, Bishop
 from chess.castling import Castling_Rights
 
 class Board:
@@ -10,36 +9,37 @@ class Board:
     """
 
     def __init__(self):
-        self.array = np.empty((8, 8), dtype=object)
+        self.array = np.zeros((8, 8), dtype=np.uint8)
 
     def _start_pos(self, color):
         """
-        Adds either black or white pieces to initial positions.
+        Adds pieces to initial positions.
         """
-        pawn_row, piece_row = (6, 7) if color == 'w' else (1, 0)
+        pawn_row, piece_row = (6, 7) if color == W else (1, 0)
 
         # Add pawns to array
         for j in range(COLS):
-            self.array[pawn_row, j]= Pawn(pawn_row, j, color) # type: ignore
+            self.array[pawn_row][j]= PAWN + color
 
         # Add pieces to array
-        self.array[piece_row, 0] = Rook(piece_row, 0, color) # type: ignore
-        self.array[piece_row, 7] = Rook(piece_row, 7, color) # type: ignore
+        self.array[piece_row][0] = ROOK + color
+        self.array[piece_row][7] = ROOK + color
 
-        self.array[piece_row, 1] = Knight(piece_row, 1, color) # type: ignore
-        self.array[piece_row, 6] = Knight(piece_row, 6, color) # type: ignore
+        self.array[piece_row][1] = KNIGHT + color
+        self.array[piece_row][6] = KNIGHT + color
 
-        self.array[piece_row, 2] = Bishop(piece_row, 2, color) # type: ignore
-        self.array[piece_row, 5] = Bishop(piece_row, 5, color) # type: ignore
+        self.array[piece_row][2] = BISHOP + color
+        self.array[piece_row][5] = BISHOP + color
 
-        self.array[piece_row, 3] = Queen(piece_row, 3, color) # type: ignore
+        self.array[piece_row][3] = QUEEN + color
 
-        self.array[piece_row, 4] = King(piece_row, 4, color) # type: ignore
+        self.array[piece_row][4] = KING + color
 
     def reset_board(self):
-        self.array = np.empty((8, 8), dtype=object)
-        self._start_pos('w')
-        self._start_pos('b')
+        self.array = np.zeros((8, 8), dtype=np.uint8) # clear board
+        self._start_pos(W)
+        self._start_pos(B)
+    
 
     def fen_reader(self, game, fen=START_FEN):
         """
@@ -47,19 +47,11 @@ class Board:
         Modifies the array of the board class.
         Modifies game state (i.e. castling rights, full- and half moves etc.)
         """
-        self.array = np.empty((8, 8), dtype=object) # clears the board.
+        self.array = np.zeros((8, 8), dtype=np.uint8) # clears the board.
         row = 0
         col = 0
     
-        piece_mapping = {
-            'p': Pawn,
-            'k': King,
-            'q': Queen,
-            'r': Rook,
-            'b': Bishop,
-            'n': Knight,
-        }
-
+        piece_mapping = STR2PIECE_MAPPING
         # Assign gamestate starting FEN
         self.fen_log = [fen]
         self.fen_count = {fen.split()[0]:1} # NOTE that threefold repitition only counts from FEN forward
@@ -70,8 +62,8 @@ class Board:
                 col += int(char)
             elif char.lower() in piece_mapping:
                 piece_class = piece_mapping[char.lower()]
-                color = 'w' if char.isupper() else 'b'
-                self.array[row][col] = piece_class(row, col, color)
+                color = W if char.isupper() else B
+                self.array[row, col] = piece_class + color
                 if char == 'K':
                     game.white_king_pos = (row, col)
                 elif char == 'k':
@@ -123,14 +115,7 @@ class Board:
         board = self.array
         fen_position = ""
         fen_string = ""
-        piece_mapping = {
-            'pawn' : 'p',
-            'king' : 'k',
-            'queen' : 'q',
-            'rook' : 'r',
-            'bishop' : 'b',
-            'knight' : 'n'
-        }
+        piece_mapping = PIECE2STRING_MAPPING
         cr = game.castling_rights
 
         # Convert board position into fen_string
@@ -138,7 +123,7 @@ class Board:
             empty_squares = 0
             for j in range(COLS):
                 if board[i][j]:
-                    fen_position += piece_mapping[board[i][j].name] if board[i][j].color == "b" else piece_mapping[board[i][j].name].upper()
+                    fen_position += piece_mapping[board[i][j]]
                 elif not board[i][j]:
                     while not board[i][j]:
                         empty_squares += 1
