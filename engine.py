@@ -7,7 +7,7 @@ import random
 # first_moves = game.get_valid_moves()
 CHECKMATE = 10000
 STALEMATE = 0
-DEPTH = 5
+DEPTH = 3
 
 def count_material(game):
     count = 0
@@ -77,6 +77,7 @@ def random_move(valid_moves):
     return valid_moves[move]
 
 def engine_move(game, moves):
+    random.shuffle(moves)
     minimax(game, moves, game.white_to_move)
     move = best_move
     return move
