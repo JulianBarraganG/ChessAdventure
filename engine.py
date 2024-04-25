@@ -7,7 +7,7 @@ import random
 # first_moves = game.get_valid_moves()
 CHECKMATE = 10000
 STALEMATE = 0
-DEPTH = 5
+DEPTH = 4
 
 def count_material(game):
     count = 0
@@ -31,6 +31,28 @@ def count_material(game):
 def eval_position(game):
     return count_material(game)
 
+# def negamax(game, moves, turn_multiplier, depth=DEPTH, alpha=-CHECKMATE, beta=CHECKMATE):
+#     global best_move
+#     if depth == 0 or game.game_over:
+#         return turn_multiplier * eval_position(game)
+    
+#     max_eval = -CHECKMATE
+#     for move in moves:
+#         game.make_move(move)
+#         subsequent_moves = game.get_valid_moves()
+#         eval = -negamax(game, subsequent_moves, (-turn_multiplier), depth=depth-1, alpha=(-beta), beta=(-alpha))
+#         game.undo_move()
+#         if eval > max_eval:
+#             max_eval = eval
+#             if depth == DEPTH:
+#                 best_move = move
+#         if max_eval > alpha:
+#             alpha = max_eval
+#         if alpha >= beta:
+#             break
+#     return max_eval
+    
+        
 def minimax(game, moves, maximizing_player, depth=DEPTH, alpha=(-CHECKMATE), beta=CHECKMATE):
     global best_move
     if depth == 0 or game.game_over:
@@ -77,6 +99,8 @@ def random_move(valid_moves):
     return valid_moves[move]
 
 def engine_move(game, moves):
+    #random.shuffle(moves)
     minimax(game, moves, game.white_to_move)
+    # negamax(game, moves, 1 if game.white_to_move else -1)
     move = best_move
     return move
