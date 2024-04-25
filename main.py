@@ -3,8 +3,10 @@ from chess.board import Board
 from chess.constants import *
 from chess.pieces import *
 from chess.game import Game, Move
+from engine import engine_move, random_move
+from time import sleep
 
-FEN = None
+FEN = None #"8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -"
 
 def get_flipped_coordinates(pos, flipping, flipped, white_to_move):
     if (flipping and not white_to_move) or flipped:
@@ -107,9 +109,13 @@ def main():
    moves = game.get_valid_moves()
    move_made = False
    game_over = (game.check_mate or game.stale_mate or game.draw_by_repetition or game.draw_fifty)
+   # For AI
+   player_one = True # If human is playing white this is True. If AI is playing, then False
+   player_two = False # Same as above but for black
 
 
    while run:
+      human_turn = (game.white_to_move and player_one) or (not game.white_to_move and player_two)
       for event in py.event.get():
             if event.type == py.QUIT:
                run = False
@@ -130,31 +136,31 @@ def main():
             
             # mouse clicks
             elif event.type == py.MOUSEBUTTONDOWN:
-               pos = py.mouse.get_pos()
-               row, col = get_flipped_coordinates(pos, game.flipping, game.flipped, game.white_to_move)
-               # (i, j) of clicked square
-               if sq_selected == (row, col): 
-                  sq_selected = () # deselect
-                  player_clicked = [] # clear click-queue
-               else:
-                  sq_selected = (row, col)
-                  player_clicked.append(sq_selected)
-                  if len(player_clicked) == 2:
-                     move = Move(player_clicked[0], player_clicked[1], game.board.array)
-                     for i in range(len(moves)):
-                        if move == moves[i]:
-                           if moves[i].pawn_promotion:
-                              choice = get_promotion_choice(screen)
-                              promote_to = {'q': Queen, 'r': Rook, 'b': Bishop, 'n': Knight}[choice]
-                              game.make_move(moves[i], promote_to=promote_to(moves[i].f_row, moves[i].f_col,
-                                                                                    ("w" if game.white_to_move else "b")))                           
-                           else:
-                              game.make_move(moves[i])
-                           move_made = True
-                           player_clicked = []
-                           sq_selected = ()
-                     if not move_made:
-                        player_clicked = [sq_selected] # invalid moves, move your click to the invalid square
+               if not game_over and human_turn:
+                  pos = py.mouse.get_pos()
+                  row, col = get_flipped_coordinates(pos, game.flipping, game.flipped, game.white_to_move)
+                  # (i, j) of clicked square
+                  if sq_selected == (row, col): 
+                     sq_selected = () # deselect
+                     player_clicked = [] # clear click-queue
+                  else:
+                     sq_selected = (row, col)
+                     player_clicked.append(sq_selected)
+                     if len(player_clicked) == 2:
+                        move = Move(player_clicked[0], player_clicked[1], game.board.array)
+                        for i in range(len(moves)):
+                           if move == moves[i]:
+                              if moves[i].pawn_promotion:
+                                 choice = get_promotion_choice(screen)
+                                 promote_to = {'q': Queen, 'r': Rook, 'b': Bishop, 'n': Knight}[choice]
+                                 game.make_move(moves[i], promote_to=promote_to(("w" if game.white_to_move else "b")))                           
+                              else:
+                                 game.make_move(moves[i])
+                              move_made = True
+                              player_clicked = []
+                              sq_selected = ()
+                        if not move_made:
+                           player_clicked = [sq_selected] # invalid moves, move your click to the invalid square
 
             
             # Check for draw
@@ -172,7 +178,15 @@ def main():
                elif game.stale_mate:
                   draw_text(screen)
                   restart()
-
+            # AI move logic
+            if (not game_over and not human_turn):
+               # py.event.wait()
+               ai_move = engine_move(game, moves)
+               if ai_move is None:
+                  ai_move = random_move(moves)
+                  print("made random move")
+               game.make_move(ai_move)
+               move_made = True
 
             if move_made:
                moves = game.get_valid_moves()
