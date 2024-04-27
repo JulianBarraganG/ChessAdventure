@@ -421,37 +421,41 @@ class Game:
             
             in_check, _, _ = self.checks_and_pins()
 
+            p_row, p_col = tpl # potential row and potential column
+
             # Appending legal king moves
-            if not in_check and (not board[tpl[0]][tpl[1]] or not board[tpl[0]][tpl[1]].color == ally): # safe empty or enemy square.
-                moves.append(Move((i, j), (tpl[0], tpl[1]), board))
+            if not in_check and (not board[p_row][p_col] or not board[p_row][p_col].color == ally): # safe empty or enemy square.
+                moves.append(Move((i, j), (p_row, p_col), board))
 
                 # Further checking if castling is possible
-                if not in_check and tpl[1] == j+1:
+                if not in_check and p_col == j+1:
                     if self.white_to_move:
-                        if self.castling_rights.wks and tpl[1]+1 < COLS and not board[tpl[0]][tpl[1]] and not board[tpl[0]][tpl[1]+1]:
-                            self.white_king_pos = tpl[0], tpl[1]+1
+                        if self.castling_rights.wks and p_col+1 < COLS and not board[p_row][p_col] and not board[p_row][p_col+1]:
+                            self.white_king_pos = p_row, p_col+1
                             in_check, _, _ = self.checks_and_pins()
                             if not in_check:
                                 moves.append(Move((i, j), (i, j+2), board)) # append white ks castling move
                     else:
-                        if self.castling_rights.bks and tpl[1]+1 < COLS and not board[tpl[0]][tpl[1]] and not board[tpl[0]][tpl[1]+1]:
-                            self.black_king_pos = tpl[0], tpl[1] + 1
+                        if self.castling_rights.bks and p_col+1 < COLS and not board[p_row][p_col] and not board[p_row][p_col+1]:
+                            self.black_king_pos = p_row, p_col + 1
                             in_check, _, _ = self.checks_and_pins()
                             if not in_check:
                                 moves.append(Move((i, j), (i, j+2), board)) # append black ks castling move
 
-                if not in_check and tpl[1] == j-1: # If king can move ones towards queen, we can check if castling is possible
+                if not in_check and p_col == j-1: # If king can move once towards queen, we can check if castling is possible
                     if self.white_to_move:
-                        if self.castling_rights.wqs and not board[tpl[0]][tpl[1]] and not board[tpl[0]][tpl[1]-1] and not board[tpl[0]][tpl[1]-2]:
-                            self.white_king_pos = tpl[0], tpl[1]-1
+                        if self.castling_rights.wqs and not board[p_row][p_col] and not board[p_row][p_col-1]\
+                                                    and not board[p_row][p_col-2]:
+                            self.white_king_pos = p_row, p_col-1
                             in_check, _, _ = self.checks_and_pins()
-                            if not in_check:
+                            if not in_check and board[p_row][p_col-3].name == "rook":
                                 moves.append(Move((i, j), (i, j-2), board)) # append white qs castling move
                     else:
-                        if self.castling_rights.bqs and not board[tpl[0]][tpl[1]] and not board[tpl[0]][tpl[1]-1] and not board[tpl[0]][tpl[1]-2]:
-                            self.black_king_pos = tpl[0], tpl[1]-1
+                        if self.castling_rights.bqs and not board[p_row][p_col] and not board[p_row][p_col-1]\
+                                                    and not board[p_row][p_col-2]:
+                            self.black_king_pos = p_row, p_col-1
                             in_check, _, _ = self.checks_and_pins()
-                            if not in_check:
+                            if not in_check and board[p_row][p_col-3].name == "rook":
                                 moves.append(Move((i, j), (i, j-2), board)) # append black qs castling move
 
             # reset king pos
