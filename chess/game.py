@@ -433,13 +433,13 @@ class Game:
                         if self.castling_rights.wks and p_col+1 < COLS and not board[p_row][p_col] and not board[p_row][p_col+1]:
                             self.white_king_pos = p_row, p_col+1
                             in_check, _, _ = self.checks_and_pins()
-                            if not in_check:
+                            if not in_check and board[p_row][p_col+2].name == "rook":
                                 moves.append(Move((i, j), (i, j+2), board)) # append white ks castling move
                     else:
                         if self.castling_rights.bks and p_col+1 < COLS and not board[p_row][p_col] and not board[p_row][p_col+1]:
                             self.black_king_pos = p_row, p_col + 1
                             in_check, _, _ = self.checks_and_pins()
-                            if not in_check:
+                            if not in_check and board[p_row][p_col+2].name == "rook":
                                 moves.append(Move((i, j), (i, j+2), board)) # append black ks castling move
 
                 if not in_check and p_col == j-1: # If king can move once towards queen, we can check if castling is possible
