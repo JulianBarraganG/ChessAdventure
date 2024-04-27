@@ -19,21 +19,21 @@ class Board:
 
         # Add pawns to array
         for j in range(COLS):
-            self.array[pawn_row][j]= Pawn(pawn_row, j, color)
+            self.array[pawn_row][j]= Pawn(color) # type: ignore
 
         # Add pieces to array
-        self.array[piece_row][0] = Rook(piece_row, 0, color)
-        self.array[piece_row][7] = Rook(piece_row, 7, color)
+        self.array[piece_row][0] = Rook(color) # type: ignore
+        self.array[piece_row][7] = Rook(color) # type: ignore
 
-        self.array[piece_row][1] = Knight(piece_row, 1, color)
-        self.array[piece_row][6] = Knight(piece_row, 6, color)
+        self.array[piece_row][1] = Knight(color) # type: ignore
+        self.array[piece_row][6] = Knight(color) # type: ignore
 
-        self.array[piece_row][2] = Bishop(piece_row, 2, color)
-        self.array[piece_row][5] = Bishop(piece_row, 5, color)
+        self.array[piece_row][2] = Bishop(color) # type: ignore
+        self.array[piece_row][5] = Bishop(color) # type: ignore
 
-        self.array[piece_row][3] = Queen(piece_row, 3, color)
+        self.array[piece_row][3] = Queen(color) # type: ignore
 
-        self.array[piece_row][4] = King(piece_row, 4, color)
+        self.array[piece_row][4] = King(color) # type: ignore
 
     def reset_board(self):
         self.array = [[None]*COLS for _ in range(ROWS)] # clears the board.
@@ -70,7 +70,7 @@ class Board:
             elif char.lower() in piece_mapping:
                 piece_class = piece_mapping[char.lower()]
                 color = 'w' if char.isupper() else 'b'
-                self.array[row][col] = piece_class(row, col, color)
+                self.array[row][col] = piece_class(color)
                 col += 1
             elif char == '/':
                 row += 1
@@ -103,10 +103,12 @@ class Board:
             game.en_passant_possible = (FILE_TO_COL[fen_ep[0]], RANK_TO_ROW[fen_ep[1]])
         
         # Assign full- and half move count
-        hm_count = int(fen.split()[4])
-        fm_count = int(fen.split()[5])
-        game.half_move = hm_count
-        game.full_move = fm_count
+        if len(fen.split()) > 4:
+            hm_count = int(fen.split()[4])
+            game.half_move = hm_count
+        if len(fen.split()) > 5:
+            fm_count = int(fen.split()[5])
+            game.full_move = fm_count
 
         return self.array
 

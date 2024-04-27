@@ -6,7 +6,7 @@ from chess.game import Game, Move
 from engine import engine_move, random_move
 from time import sleep
 
-FEN = None #"8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -"
+FEN = None#"8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -"
 
 def get_flipped_coordinates(pos, flipping, flipped, white_to_move):
     if (flipping and not white_to_move) or flipped:

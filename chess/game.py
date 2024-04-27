@@ -1,7 +1,6 @@
 import pygame as py
 from .board import Board
 from .constants import ROWS, COLS, DSQ, LSQ, SQ_SIZE, START_FEN, ALL_DIR, ROW_TO_RANK, COL_TO_FILE
-from .pieces import Queen, Rook, Bishop, Knight
 from .castling import Castling_Rights
 
 class Game:
@@ -28,6 +27,7 @@ class Game:
         self.draw_by_repetition = False
         self.stale_mate = False
         self.check_mate = False
+        self.game_over = (self.stale_mate or self.draw_fifty or self.draw_by_repetition or self.check_mate) # if any is true, game is over.
         ####################
         self.move_log = []
         self.white_to_move = True
@@ -86,7 +86,10 @@ class Game:
             if move.en_passant:
                 self.en_passant_square = move.en_passant_square
                 board[move.i_row][move.f_col] = None
+                if (move.f_row, move.f_col) == self.en_passant_possible:
+                    move.captured_piece = move.en_passant_piece
                 self.en_passant_possible = ()
+                # missing thingy for fen notation
             if abs(move.i_row - move.f_row) == 2:
                 self.en_passant_possible = move.f_row + dir, move.i_col
             else:
@@ -155,7 +158,6 @@ class Game:
         if self.half_move == 50:
             self.draw_fifty = True
 
-
     def undo_move(self):
         if len(self.move_log) == 0:
             return print("No moves to undo")
@@ -170,7 +172,7 @@ class Game:
             self.board.array[move.f_row][move.f_col] = move.captured_piece
 
             if move.en_passant:
-                self.board.array[move.i_row][move.f_col] = move.captured_piece
+                self.board.array[move.i_row][move.f_col] = move.en_passant_piece
                 self.board.array[move.f_row][move.f_col] = None
                 self.en_passant_possible = (move.f_row, move.f_col)
 
@@ -338,23 +340,25 @@ class Game:
         ############## CHECKS AND PINS ALGORITHM #############
         """ Beams out from the kings position and locates checks and pins for each of the 8 directions. """
         for j in range(len(ALL_DIR)):
-            possible_pins = () #reset possible pins
+            possible_pins = () # reset possible pins
             d = ALL_DIR[j]
             for i in range(1, 8): # start from 1, since 0 incrementation is the kings square itself.
-                end_row = init_row + d[0] * i
-                end_col = init_col + d[1] * i
-                if 0 <= end_row < ROWS and 0 <= end_col < COLS:
-                    if self.board.array[end_row][end_col]:
-                        end_piece = self.board.array[end_row][end_col]
-                        if end_piece.color == ally:
-                            if end_piece.name == "king": # "allied king" encounters occur internally in get_king_moves()
+                search_row = init_row + d[0] * i
+                search_col = init_col + d[1] * i
+                if 0 <= search_row < ROWS and 0 <= search_col < COLS: # if we are looking inside the board
+                    spotted_piece = self.board.array[search_row][search_col]
+                    #print(f"Found piece at {search_row}, {search_col}: {spotted_piece.name} ({spotted_piece.color})") if spotted_piece else print(f"No piece at {search_row}, {search_col}")
+                    if spotted_piece:
+                        if spotted_piece.color == ally:
+                            if spotted_piece.name == "king": # "allied king" encounters occur internally in get_king_moves()
                                 continue
                             if possible_pins == ():
-                                possible_pins = (end_row, end_col, d[0], d[1])
+                                possible_pins = (search_row, search_col, d[0], d[1])
                             else:
                                 break # double allied piece, can't be any pin
-                        elif end_piece.color == enemy:
-                            name = end_piece.name
+                        elif spotted_piece.color == enemy:
+                            name = spotted_piece.name
+                            #print(self.white_to_move, name, spotted_piece.color)
                             # for all dir 4 possible check-patterns:
                             # 1) orthogonal rook checks
                             # 2) diagonal bishop checks
@@ -368,7 +372,7 @@ class Game:
 
                                 if possible_pins == ():
                                     in_check = True
-                                    checks.append((end_row, end_col, d[0], d[1]))
+                                    checks.append((search_row, search_col, d[0], d[1]))
                                     break
                                 else:
                                     pins.append(possible_pins)
@@ -462,72 +466,74 @@ class Game:
         Calculates all possible pawn moves, and adds them to the moves list
         """
         board = self.board.array
-        enemy = 'b' if self.white_to_move else 'w'
+        enemy_color = 'b' if self.white_to_move else 'w'
         dir = -1 if self.white_to_move else 1
-        start_row = 6 if self.board.array[i][j].color == 'w' else 1
-        end_row = 0 if self.white_to_move else 7
-        pinned = False
-        pin_dir = None
-        orthogonal_dirs = ((1, 0), (0, 1), (-1, 0), (0, -1))
+        start_row, end_row = (6, 0) if self.white_to_move else (1, 7)
 
+        # Check if pawn is pinned
+        pinned, pin_dir = False, None
         for pin in self.pins:
             if (i, j) == (pin[0], pin[1]):
                 pinned = True
                 pin_dir = pin[2], pin[3]
 
-        # Extraction of logic
-        forward_empty = not board[i + dir][j] if 0 <= i + dir < ROWS else False
-        two_squares_empty = not board[i + 2 * dir][j] and i == start_row if 0 <= i + 2 * dir < ROWS else False  # allow for double advance first pawn move.
-        left_capture_possible = j > 0 and board[i + dir][j - 1] and board[i + dir][j - 1].color == enemy if 0 <= i + dir < ROWS else False
-        right_capture_possible = j < COLS - 1 and board[i + dir][j + 1] and board[i + dir][j + 1].color == enemy if 0 <= i + dir < ROWS else False
+        # Helper function to check if a move is within the board
+        def within_board(x, y):
+            return 0 <= x < ROWS and 0 <= y < COLS
 
-        if not pinned: # add normal legal moves/captures.
-            
-            if i + dir == end_row and not board[i + dir][j]: # append pawn promotion move.
-                moves.append(Move((i, j), (i + dir, j), board, pawn_promotion=True))
+        # Helper function to check if a square is empty
+        def is_empty(x, y):
+            return within_board(x, y) and not board[x][y]
 
-            # Add advancing moves
-            if forward_empty and (i + dir != end_row):
-                moves.append(Move((i, j), (i + dir, j), board))
-                if two_squares_empty:
-                    moves.append(Move((i, j), (i + 2 * dir, j), board, en_passant=True))
+        # Helper function to check if a square is occupied by an enemy
+        def is_enemy(x, y):
+            return within_board(x, y) and board[x][y] and board[x][y].color == enemy_color
 
-            # Add captures
-            if left_capture_possible:
-                moves.append(Move((i, j), (i + dir, j - 1), board)) if i + dir != end_row else moves.append(Move((i, j), (i + dir, j - 1), board, pawn_promotion=True))
-            if right_capture_possible:
-                moves.append(Move((i, j), (i + dir, j + 1), board)) if i + dir != end_row else moves.append(Move((i, j), (i + dir, j + 1), board, pawn_promotion=True))
-
-            # En Passant Captures
-            if self.en_passant_possible != ():
-                if self.en_passant_possible[0] - dir == i and abs(self.en_passant_possible[1] - j) == 1:
-                    moves.append(Move((i, j), (self.en_passant_possible[0], self.en_passant_possible[1]), board, True))
-
-        elif 0 < j < (COLS - 1): # if pawn is pinned and capture stays within board (pinned == True implicit).
-
-            # Logic allowing the capture of pinning piece.
-            diagonal_capture_possible = board[i + pin_dir[0]][j + pin_dir[1]] and board[i + pin_dir[0]][j + pin_dir[1]].color == enemy
-
-            # Capturing in en passant direction
-            if self.en_passant_possible != ():
-                r = self.en_passant_possible[0] # en_passant row
-                c = self.en_passant_possible[1] # en_passant col
-                pinned_en_passant_possible = (r, c) == (i + pin_dir[0], j + pin_dir[1]) # en passant square in pin direction
-                if pinned_en_passant_possible:
-                    moves.append(Move((i, j), (self.en_passant_possible[0], self.en_passant_possible[1]), board, True))
-
-            # Pinned diagonally, then capturing on said diag is possible
-            if diagonal_capture_possible: 
-                moves.append(Move((i, j), (i + pin_dir[0], j + pin_dir[1]), board))
-
-            # No captures available if orthogonally pinned, but advances are:
-            elif pin_dir in orthogonal_dirs and forward_empty: 
-                moves.append(Move((i, j), (i + dir, j), board))
-                if two_squares_empty:
-                    moves.append(Move((i, j), (i + 2 * dir, j), board))
-
-
+        # Helper function to add a move to the list of possible moves
+        def add_move(start, end, pawn_promotion=False, en_passant=False):
+            if within_board(end[0], end[1]):
+                if end[0] == end_row and not board[end[0]][end[1]] and pawn_promotion:
+                    moves.append(Move(start, end, board, pawn_promotion=True))
+                elif is_empty(*end) or (en_passant and self.en_passant_possible == (end[0], end[1])):
+                    moves.append(Move(start, end, board, en_passant=en_passant))
+                elif is_enemy(*end):
+                    moves.append(Move(start, end, board))
         
+        # Normal legal moves/captures
+        if not pinned:
+            # Single square advance
+            if is_empty(i + dir, j) and i + dir != end_row:
+                add_move((i, j), (i + dir, j))
+                # Double square advance on first move
+                if is_empty(i + 2 * dir, j) and i == start_row:
+                    add_move((i, j), (i + 2 * dir, j), en_passant=True)
+            # Captures
+            for offset in [-1, 1]:
+                if is_enemy(i + dir, j + offset):
+                    add_move((i, j), (i + dir, j + offset))
+            # En Passant Captures
+            if self.en_passant_possible:
+                r, c = self.en_passant_possible
+                if r - dir == i and abs(c - j) == 1:
+                    add_move((i, j), (r, c), en_passant=True)
+        
+        # Pawn is pinned
+        elif pinned and 0 < j < (COLS-1):
+            #print("Pinned! in dir", pin_dir)
+            # Allow only moves in the direction of the pin
+            if pin_dir == (dir, 0):  # Pin is vertical
+                # Forward move if it's directly in the pin direction
+                if is_empty(i + dir, j):
+                    add_move((i, j), (i + dir, j))
+                if is_empty(i + 2 * dir, j) and i == start_row:
+                    add_move((i, j), (i + 2 * dir, j))
+            elif abs(pin_dir[0]) == abs(pin_dir[1]) == 1:  # Pin is diagonal
+                # Capture in the pin direction if there's an enemy piece
+                if is_enemy(i + pin_dir[0], j + pin_dir[1]):
+                    add_move((i, j), (i + pin_dir[0], j + pin_dir[1]))
+            # No moves allowed if pinned horizontally
+
+
     def get_knight_moves(self, i, j, moves):
         """
         Calculates all possible knight moves, and adds them to the moves list
@@ -639,7 +645,8 @@ class Move():
         self.moved_piece = array[self.i_row][self.i_col]
         self.en_passant = en_passant
         self.pawn_promotion = pawn_promotion
-        self.captured_piece = array[self.f_row][self.f_col] if not self.en_passant else array[self.i_row][self.f_col]
+        self.captured_piece = array[self.f_row][self.f_col] #if not self.en_passant else array[self.i_row][self.f_col]
+        self.en_passant_piece = array[self.i_row][self.f_col] if self.en_passant else None
         self.moveID = 1000*self.i_row+100*self.i_col+10*self.f_row+self.f_col
         self.en_passant_square = "-" if not self.en_passant else self.col_to_file[self.f_col] + self.row_to_rank[self.f_row + (1 if self.moved_piece.color == 'w' else -1)]
     
