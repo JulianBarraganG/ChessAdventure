@@ -1,3 +1,16 @@
+## Notes on Project
+
+This project was my pet project, in the summer between my first and second year on the bachelor.
+Although it has taught me a lot about OOB and structuring a project in Python, I must leave it behind.
+
+The reality of chess engines, is that performance is essential. 
+
+In the future, I will most likely reimplement chess in C++ or C# with focus on performance, and implemented AI algorithms from scratch.
+
+However, another goal of mine is to do a Deep Reinforcement Learning chess engine, for which I will most likely be revisiting C++
+
+The current implementation is painfully slow, since it is mostly native Python.
+
 ### MiniMax Chess Engine
 
 This following chess engine is a private project of mine, which was built for the purposes of learning and a love for Chess and Machine Learning.
