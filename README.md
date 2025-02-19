@@ -7,7 +7,7 @@ The reality of chess engines, is that performance is essential.
 
 In the future, I will most likely reimplement chess in C++ or C# with focus on performance, and implemented AI algorithms from scratch.
 
-However, another goal of mine is to do a Deep Reinforcement Learning chess engine, for which I will most likely be revisiting C++
+However, another goal of mine is to do a Deep Reinforcement Learning chess engine, for which I will most likely be revisiting Python.
 
 The current implementation is painfully slow, since it is mostly native Python.
 
